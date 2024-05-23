@@ -1,0 +1,89 @@
+# https://clang.llvm.org/docs/ClangFormatStyleOptions.html
+# https://clang-format-configurator.site/
+# Clang format v17
+---
+AccessModifierOffset: -4
+AlignAfterOpenBracket: Align
+AlignArrayOfStructures: Right
+AlignTrailingComments: true
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortBlocksOnASingleLine: Empty
+AllowShortEnumsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: WithoutElse
+UseTab: Never
+TabWidth: 4
+Standard: Latest
+SpacesInLineCommentPrefix:
+  Minimum: 1
+  Maximum: 1
+SpacesInAngles: Never
+SpacesBeforeTrailingComments: 3
+SpaceInEmptyBlock: false
+SpaceBeforeSquareBrackets: false
+SpaceBeforeRangeBasedForLoopColon: true
+SpacesInSquareBrackets: false
+SpacesInContainerLiterals: false
+IndentWidth: 4
+BreakBeforeBraces: Custom
+BreakBeforeTernaryOperators: true
+BreakConstructorInitializers: BeforeComma
+PointerAlignment: Left
+ReferenceAlignment: Left
+SortIncludes: CaseSensitive
+SpaceBeforeParens: ControlStatementsExceptControlMacros
+QualifierAlignment: Left
+PackConstructorInitializers: Never
+IncludeBlocks: Regroup
+NamespaceIndentation: None
+ColumnLimit: 120
+FixNamespaceComments: true
+EmptyLineAfterAccessModifier: Never
+EmptyLineBeforeAccessModifier: LogicalBlock
+IndentAccessModifiers: false
+IndentCaseLabels: true
+IndentWrappedFunctionNames: true
+MaxEmptyLinesToKeep: 1
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCaseColon: false
+SpaceBeforeCtorInitializerColon: true
+SpaceBeforeInheritanceColon: true
+BinPackParameters: false
+BinPackArguments: false
+ReflowComments: true
+SpacesInParens: Never
+SpaceAfterLogicalNot: false
+SortUsingDeclarations: Lexicographic
+LineEnding: LF
+Language: Cpp
+KeepEmptyLinesAtEOF: true
+InsertNewlineAtEOF: true
+IndentCaseBlocks: false
+AlignOperands: Align
+InsertTrailingCommas: Wrapped
+SpaceAfterCStyleCast: true
+DerivePointerAlignment: false
+SpaceBeforeCpp11BracedList: true
+Cpp11BracedListStyle: true
+BitFieldColonSpacing: Both
+BraceWrapping:
+  AfterCaseLabel: false
+  AfterClass: false
+  AfterControlStatement: Never
+  AfterEnum: false
+  AfterFunction: false
+  AfterStruct: false
+  AfterUnion: false
+  AfterExternBlock: false
+  BeforeCatch: false
+  BeforeElse: false
+  BeforeLambdaBody: false
+  BeforeWhile: false
+  IndentBraces: false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+  AfterObjCDeclaration: false
+  AfterNamespace: false
