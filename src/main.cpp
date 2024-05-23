@@ -1,6 +1,7 @@
 #include <SDL.h>
 #include <glm/glm.hpp>
 #include <iostream>
+#include <vk_mem_alloc.h>
 
 struct S {
     int a;
@@ -17,6 +18,8 @@ int main() {
     auto v = SDL_TRUE;
 
     auto vec = glm::vec3();
+
+    VmaAllocator allocator;
 
     return 0;
 }
