@@ -1,5 +1,6 @@
-#include <iostream>
 #include <SDL.h>
+#include <glm/glm.hpp>
+#include <iostream>
 
 struct S {
     int a;
@@ -14,6 +15,8 @@ int main() {
     };
 
     auto v = SDL_TRUE;
+
+    auto vec = glm::vec3();
 
     return 0;
 }
