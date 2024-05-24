@@ -17,7 +17,7 @@ int main() {
         .a = 10, .b = 20
     };
 
-    std::expected<int, std::string> test{};
+    std::expected<int, std::string> test {};
 
     auto v = SDL_TRUE;
 

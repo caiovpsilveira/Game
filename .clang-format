@@ -68,9 +68,10 @@ DerivePointerAlignment: false
 SpaceBeforeCpp11BracedList: true
 Cpp11BracedListStyle: true
 BitFieldColonSpacing: Both
+AlwaysBreakTemplateDeclarations: Yes
 BraceWrapping:
   AfterCaseLabel: false
-  AfterClass: false
+  AfterClass: true
   AfterControlStatement: Never
   AfterEnum: false
   AfterFunction: false
@@ -86,4 +87,4 @@ BraceWrapping:
   SplitEmptyRecord: false
   SplitEmptyNamespace: false
   AfterObjCDeclaration: false
-  AfterNamespace: false
+  AfterNamespace: true
