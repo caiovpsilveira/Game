@@ -2,7 +2,7 @@
 
 #include "VulkanContext.hpp"
 
-#include "core/Logger.hpp"
+#include "Logger.hpp"
 
 // libs
 #include <SDL.h>
@@ -88,12 +88,16 @@ VulkanContext::VulkanContext(std::span<const char*> requiredInstanceExtensions,
 
         createPhysicalDevice();
 
+        createLogicalDevice();
+
         assert(m_instance);
         // assert(m_debugMessenger); // Allowed, can be nullptr if debug is disabled / not supported
         assert(m_surface);
         assert(m_physicalDevice);
+        assert(m_device);
+        assert(m_graphicsQueue);
+        assert(m_presentQueue);
         // Not implemented yet
-        // assert(m_device);
         // assert(m_allocator);
         // assert(m_swapchain);
     } catch (...) {
@@ -110,6 +114,8 @@ VulkanContext::VulkanContext(VulkanContext&& rhs) noexcept
     , m_physicalDevice(std::exchange(rhs.m_physicalDevice, nullptr))
     , m_queueFamiliesIndices(rhs.m_queueFamiliesIndices)
     , m_device(std::exchange(rhs.m_device, nullptr))
+    , m_graphicsQueue(std::exchange(rhs.m_graphicsQueue, nullptr))
+    , m_presentQueue(std::exchange(rhs.m_presentQueue, nullptr))
     , m_allocator(std::exchange(rhs.m_allocator, nullptr))
     , m_swapchain(std::exchange(rhs.m_swapchain, nullptr))
 {}
@@ -123,6 +129,8 @@ VulkanContext& VulkanContext::operator=(VulkanContext&& rhs) noexcept
         std::swap(m_physicalDevice, rhs.m_physicalDevice);
         m_queueFamiliesIndices = rhs.m_queueFamiliesIndices;
         std::swap(m_device, rhs.m_device);
+        std::swap(m_graphicsQueue, rhs.m_graphicsQueue);
+        std::swap(m_presentQueue, rhs.m_presentQueue);
         std::swap(m_allocator, rhs.m_allocator);
         std::swap(m_swapchain, rhs.m_swapchain);
     }
@@ -257,12 +265,58 @@ void VulkanContext::createPhysicalDevice()
     throw vk::UnknownError("No physical device matched the application requirements");
 }
 
+void VulkanContext::createLogicalDevice()
+{
+    std::vector<uint32_t> uniqueQueueFamiliesIndices {m_queueFamiliesIndices.graphicsFamilyIndex,
+                                                      m_queueFamiliesIndices.presentFamilyIndex};
+    // remove duplicate elements
+    uniqueQueueFamiliesIndices.erase(std::unique(uniqueQueueFamiliesIndices.begin(), uniqueQueueFamiliesIndices.end()),
+                                     uniqueQueueFamiliesIndices.end());
+
+    float queuePriority = 1.f;
+    std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+
+    for (uint32_t queueFamilyIndex : uniqueQueueFamiliesIndices) {
+        VkDeviceQueueCreateInfo queueCreateInfo {.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                                                 .pNext = nullptr,
+                                                 .flags = 0,
+                                                 .queueFamilyIndex = queueFamilyIndex,
+                                                 .queueCount = 1,
+                                                 .pQueuePriorities = &queuePriority};
+        queueCreateInfos.push_back(queueCreateInfo);
+    }
+
+    std::vector<const char*> enabledExtensions {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+
+    VkDeviceCreateInfo deviceCreateInfo {.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+                                         .pNext = nullptr,
+                                         .flags = 0,
+                                         .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
+                                         .pQueueCreateInfos = queueCreateInfos.data(),
+                                         .enabledLayerCount = 0,           // deprecated
+                                         .ppEnabledLayerNames = nullptr,   // deprecated
+                                         .enabledExtensionCount = static_cast<uint32_t>(enabledExtensions.size()),
+                                         .ppEnabledExtensionNames = enabledExtensions.data(),
+                                         .pEnabledFeatures = nullptr};
+
+    m_device = m_physicalDevice.createDevice(deviceCreateInfo);
+    DEBUG("Successfully created logical device\n");
+    VULKAN_HPP_DEFAULT_DISPATCHER.init(m_device);
+
+    m_graphicsQueue = m_device.getQueue(m_queueFamiliesIndices.graphicsFamilyIndex, 0);
+    m_presentQueue = m_device.getQueue(m_queueFamiliesIndices.presentFamilyIndex, 0);
+}
+
 void VulkanContext::cleanup() noexcept
 {
     // This is reused both on the destructor and to cleanup resouce aquired during the constructor, if something failed.
     // For the destructor, all members must be in a valid state, otherwise the constructor must have throwed
 
-    // PhysicalDevice is owned by the VkInstance
+    // Queues are owned by device
+    if (m_device) {
+        m_device.destroy();
+    }
+    // PhysicalDevice is owned by the instance
     if (m_surface) {
         m_instance.destroySurfaceKHR(m_surface);
     }
