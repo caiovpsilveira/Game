@@ -5,8 +5,9 @@ This is my attempt to make a voxel game to learn Vulkan.
 I'm using C++23 because of std::expected, designated initializers and other features from C++20/23, which works very well with Vulkan.
 
 ## Dependencies
-For third_party libraries, I'm using [SDL2](https://www.libsdl.org/), [GLM](https://github.com/g-truc/glm) and [VulkanMemoryAllocator](https://gpuopen.com/vulkan-memory-allocator/). These are already embedded within the project.
+For third_party libraries, I'm using [SDL2](https://www.libsdl.org/), [GLM](https://github.com/g-truc/glm). These are already embedded within the project.
 For external dependencies, this requires the Vulkan SDK. You can download the latest Vulkan SDK [here](https://www.lunarg.com/vulkan-sdk/).
+Vulkan SDK is required for both Vulkan and [VulkanMemoryAllocator](https://gpuopen.com/vulkan-memory-allocator/), which is shipped with the Vulkan SDK since 1.3.216.0.
 
 ## Building
 This project is configured with CMake. In-source builds are disabled.
