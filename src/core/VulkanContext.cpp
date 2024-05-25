@@ -15,7 +15,6 @@
 #include <algorithm>
 #include <cassert>
 #include <cstring>
-#include <iostream>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -33,11 +32,22 @@ VkBool32 debugMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSe
                                 const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
                                 void* pUserData) noexcept
 {
-    (void) messageSeverity;
     (void) messageType;
     (void) pUserData;
 
-    std::cout << "validation layer: " << pCallbackData->pMessage << '\n';
+    switch (messageSeverity) {
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
+            ERROR_FMT("[VALIDATION LAYER]: {}\n", pCallbackData->pMessage);
+            break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
+            WARN_FMT("[VALIDATION LAYER]: {}\n", pCallbackData->pMessage);
+            break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
+            INFO_FMT("[VALIDATION LAYER]: {}\n", pCallbackData->pMessage);
+            break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
+        default: TRACE_FMT("[VALIDATION LAYER]: {}\n", pCallbackData->pMessage); break;
+    }
 
     return VK_FALSE;
 }
