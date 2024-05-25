@@ -20,7 +20,7 @@ make
 
 This was tested with GNU and Clang.
 For GNU, just setting `CMAKE_CXX_STANDARD 23` in the CMakeLists.txt worked.
-For Clang, I had to add `-stdlib=libc++` to `CMAKE_CXX_FLAGS` for it to recognize std::expected, and install `libc++-dev` and `libc++abi-dev`.
+For Clang, I had to add `-stdlib=libc++` to `CMAKE_CXX_FLAGS` for it to recognize std::expected, and install `libc++-dev`.
 You may need to check how to enable C++23 features with your compiler.
 
 Alternative, there is a `cmake.sh` script in the project root, which sets the compiler as Clang and overwrites some CMake rules with `CMakeOverrides.txt`, such as compile flags and `CMAKE_EXPORT_COMPILE_COMMANDS`.
