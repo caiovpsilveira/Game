@@ -2,6 +2,9 @@
 
 // libs
 #define VK_NO_PROTOTYPES
+#include <SDL.h>
+#include <SDL_video.h>
+#include <SDL_vulkan.h>
 #include <vk_mem_alloc.h>
 #include <volk.h>
 
@@ -17,6 +20,8 @@
 // Because std still does not support std::expected in other types,
 // such as std::vector, there are internal "try-catches" that converts
 // std::bad_alloc to VK_ERROR_OUT_OF_HOST_MEMORY
+
+// TODO: log error information
 
 namespace core
 {
@@ -45,6 +50,9 @@ void cleanup(VkInstance instance,
              VmaAllocator allocator = nullptr,
              VkSwapchainKHR swapchain = nullptr) noexcept
 {
+    if (surface) {
+        vkDestroySurfaceKHR(instance, surface, nullptr);
+    }
     if (debugMessenger) {
         vkDestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
     }
@@ -208,7 +216,8 @@ std::expected<std::pair<VkInstance, VkDebugUtilsMessengerEXT>, int32_t>
 std::expected<VulkanContext, int32_t>
     VulkanContext::createVulkanContext(std::span<const char*> requiredInstanceExtensions,
                                        bool enableValidationLayersIfSupported,
-                                       bool enableDebugMessengerIfSupported) noexcept
+                                       bool enableDebugMessengerIfSupported,
+                                       SDL_Window* window) noexcept
 {
     auto instanceDebugRes = createInstanceAndDebug(requiredInstanceExtensions,
                                                    enableValidationLayersIfSupported,
@@ -216,14 +225,16 @@ std::expected<VulkanContext, int32_t>
     if (!instanceDebugRes.has_value()) {
         return std::unexpected(instanceDebugRes.error());
     }
+    const auto& [instance, debugMessenger] = instanceDebugRes.value();
 
-    return VulkanContext(instanceDebugRes->first,
-                         instanceDebugRes->second,
-                         nullptr,
-                         nullptr,
-                         nullptr,
-                         nullptr,
-                         nullptr);
+    VkSurfaceKHR surface;
+    SDL_bool SDLRes = SDL_Vulkan_CreateSurface(window, instance, &surface);
+    if (SDLRes != SDL_TRUE) {
+        cleanup(instance, debugMessenger);
+        return std::unexpected(0);   // 0 signals SDL_Error, as Vulkan uses 0 for VK_SUCCESS
+    }
+
+    return VulkanContext(instance, debugMessenger, surface, nullptr, nullptr, nullptr, nullptr);
 }
 
 VulkanContext::VulkanContext(VkInstance_T* _instance,
@@ -243,9 +254,8 @@ VulkanContext::VulkanContext(VkInstance_T* _instance,
 {
     assert(instance);
     // assert(debugMessenger); // Allowed, can be nullptr if debug is disabled / not supported
-
+    assert(surface);
     // Not implemented yet
-    // assert(surface);
     // assert(physicalDevice);
     // assert(device);
     // assert(allocator);

@@ -6,6 +6,8 @@
 #include <expected>
 #include <span>
 
+struct SDL_Window;
+
 struct VkInstance_T;
 struct VkDebugUtilsMessengerEXT_T;
 struct VkSurfaceKHR_T;
@@ -17,11 +19,14 @@ struct VkSwapchainKHR_T;
 namespace core
 {
 
+// For errors, Returns 0 for SDL_error, or the VkResult enum code
 struct VulkanContext {
 public:
-    static std::expected<VulkanContext, int32_t> createVulkanContext(std::span<const char*> requiredInstanceSurfaceExtensions,
-                                                                     bool enableValidationLayersIfSupported,
-                                                                     bool enableDebugMessengerIfSupported) noexcept;
+    static std::expected<VulkanContext, int32_t>
+        createVulkanContext(std::span<const char*> requiredInstanceSurfaceExtensions,
+                            bool enableValidationLayersIfSupported,
+                            bool enableDebugMessengerIfSupported,
+                            SDL_Window* window) noexcept;
 
     VulkanContext(const VulkanContext&) = delete;
     VulkanContext& operator=(const VulkanContext&) = delete;
