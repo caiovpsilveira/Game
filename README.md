@@ -6,7 +6,7 @@ I'm using C++23 because of std::expected, designated initializers and other feat
 
 ## Dependencies
 For third_party libraries, I'm using [SDL2](https://www.libsdl.org/), [GLM](https://github.com/g-truc/glm) and [VulkanMemoryAllocator](https://gpuopen.com/vulkan-memory-allocator/). These are already embedded within the project.
-For external dependencies, this requires the Vulkan SDK + Volk (which is included with the Vulkan SDK since 1.3.211). You can download the latest Vulkan SDK [here](https://www.lunarg.com/vulkan-sdk/).
+For external dependencies, this requires the Vulkan SDK. You can download the latest Vulkan SDK [here](https://www.lunarg.com/vulkan-sdk/).
 
 ## Building
 This project is configured with CMake. In-source builds are disabled.

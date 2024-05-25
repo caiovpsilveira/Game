@@ -2,31 +2,25 @@
 #define CORE_VULKAN_CONTEXT_H
 
 // std
-#include <cstdint>
-#include <expected>
 #include <span>
 
-struct SDL_Window;
+// libs
+#include <vulkan/vulkan.hpp>
 
-struct VkInstance_T;
-struct VkDebugUtilsMessengerEXT_T;
-struct VkSurfaceKHR_T;
-struct VkPhysicalDevice_T;
-struct VkDevice_T;
+struct SDL_Window;
 struct VmaAllocator_T;
-struct VkSwapchainKHR_T;
 
 namespace core
 {
 
-// For errors, Returns 0 for SDL_error, or the VkResult enum code
-struct VulkanContext {
+class VulkanContext
+{
 public:
-    static std::expected<VulkanContext, int32_t>
-        createVulkanContext(std::span<const char*> requiredInstanceSurfaceExtensions,
-                            bool enableValidationLayersIfSupported,
-                            bool enableDebugMessengerIfSupported,
-                            SDL_Window* window) noexcept;
+    VulkanContext() noexcept = default;
+    VulkanContext(std::span<const char*> requiredInstanceSurfaceExtensions,
+                  bool enableValidationLayersIfSupported,
+                  bool enableDebugMessengerIfSupported,
+                  SDL_Window* window);
 
     VulkanContext(const VulkanContext&) = delete;
     VulkanContext& operator=(const VulkanContext&) = delete;
@@ -36,22 +30,21 @@ public:
 
     ~VulkanContext() noexcept;
 
-    VkInstance_T* instance;
-    VkDebugUtilsMessengerEXT_T* debugMessenger;
-    VkSurfaceKHR_T* surface;
-    VkPhysicalDevice_T* physicalDevice;
-    VkDevice_T* device;
-    VmaAllocator_T* allocator;
-    VkSwapchainKHR_T* swapchain;
+private:
+    void createInstanceAndDebug(std::span<const char*> requiredInstanceExtensions,
+                                bool enableValidationLayersIfSupported,
+                                bool enableDebugMessengerIfSupported);
+
+    void cleanup() noexcept;
 
 private:
-    VulkanContext(VkInstance_T* _instance,
-                  VkDebugUtilsMessengerEXT_T* _debugMessenger,
-                  VkSurfaceKHR_T* _surface,
-                  VkPhysicalDevice_T* _physicalDevice,
-                  VkDevice_T* _device,
-                  VmaAllocator_T* _allocator,
-                  VkSwapchainKHR_T* _swapchain) noexcept;
+    vk::Instance m_instance = nullptr;
+    vk::DebugUtilsMessengerEXT m_debugMessenger = nullptr;
+    vk::SurfaceKHR m_surface = nullptr;
+    vk::PhysicalDevice m_physicalDevice = nullptr;
+    vk::Device m_device = nullptr;
+    VmaAllocator_T* m_allocator = nullptr;
+    vk::SwapchainKHR m_swapchain = nullptr;
 };
 
 }   // namespace core

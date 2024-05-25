@@ -4,6 +4,7 @@
 #include <SDL.h>
 #include <SDL_vulkan.h>
 #include <iostream>
+#include <vulkan/vulkan.hpp>
 
 int main()
 {
@@ -27,7 +28,6 @@ int main()
     TRACE("test TRACE fmt {} {} {} {}", 3.14, "Hi", testMessage, true);
 
     SDL_Init(SDL_INIT_VIDEO);
-
     SDL_Window* window = SDL_CreateWindow("Test window", 0, 0, 800, 600, SDL_WINDOW_VULKAN);
 
     uint32_t count;
@@ -35,12 +35,14 @@ int main()
     std::vector<const char*> ext(count);
     SDL_Vulkan_GetInstanceExtensions(window, &count, ext.data());
 
-    auto vkContext = core::VulkanContext::createVulkanContext(ext, true, true, window);
-
-    if (!vkContext.has_value()) {
-        std::cerr << "Vulkan context creation returned with error " << vkContext.error() << std::endl;
-        return -1;
+    try {
+        auto vkContext = core::VulkanContext(ext, true, true, window);
+    } catch (std::exception& e) {
+        std::cerr << e.what() << std::endl;
     }
+
+    SDL_DestroyWindow(window);
+    SDL_Quit();
 
     return 0;
 }

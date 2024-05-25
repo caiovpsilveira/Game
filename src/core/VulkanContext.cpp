@@ -1,27 +1,23 @@
+#define VK_NO_PROTOTYPES
+
 #include "VulkanContext.hpp"
 
 // libs
-#define VK_NO_PROTOTYPES
 #include <SDL.h>
 #include <SDL_video.h>
 #include <SDL_vulkan.h>
 #include <vk_mem_alloc.h>
-#include <volk.h>
+#include <vulkan/vulkan.hpp>
 
 // std
 #include <algorithm>
 #include <cassert>
 #include <cstring>
 #include <iostream>
-#include <new>
 #include <utility>
 #include <vector>
 
-// Because std still does not support std::expected in other types,
-// such as std::vector, there are internal "try-catches" that converts
-// std::bad_alloc to VK_ERROR_OUT_OF_HOST_MEMORY
-
-// TODO: log error information
+VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 namespace core
 {
@@ -43,90 +39,102 @@ VkBool32 debugMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSe
     return VK_FALSE;
 }
 
-void cleanup(VkInstance instance,
-             VkDebugUtilsMessengerEXT debugMessenger = nullptr,
-             VkSurfaceKHR surface = nullptr,
-             VkDevice device = nullptr,
-             VmaAllocator allocator = nullptr,
-             VkSwapchainKHR swapchain = nullptr) noexcept
+bool checkValidationLayersSupport()
 {
-    if (surface) {
-        vkDestroySurfaceKHR(instance, surface, nullptr);
+    auto instanceLayerProperties = vk::enumerateInstanceLayerProperties();
+
+    auto match = [](const VkLayerProperties& p) {
+        return std::strcmp(p.layerName, "VK_LAYER_KHRONOS_validation") == 0;
+    };
+
+    bool supportsValidationLayers = false;
+    if (auto result = std::ranges::find_if(instanceLayerProperties, match); result != instanceLayerProperties.end()) {
+        supportsValidationLayers = true;
     }
-    if (debugMessenger) {
-        vkDestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-    }
-    vkDestroyInstance(instance, nullptr);
+    return supportsValidationLayers;
 }
 
-std::expected<bool, int32_t> checkValidationLayersSupport() noexcept
+bool checkDebugMessengerSupport()
+{
+    auto instanceExtensionProperties = vk::enumerateInstanceExtensionProperties();
+
+    auto match = [](const VkExtensionProperties& p) {
+        return std::strcmp(p.extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0;
+    };
+
+    bool supportsDebugMessenger = false;
+    if (auto result = std::ranges::find_if(instanceExtensionProperties, match);
+        result != instanceExtensionProperties.end()) {
+        supportsDebugMessenger = true;
+    }
+    return supportsDebugMessenger;
+}
+
+}   // namespace
+
+VulkanContext::VulkanContext(std::span<const char*> requiredInstanceExtensions,
+                             bool enableValidationLayersIfSupported,
+                             bool enableDebugMessengerIfSupported,
+                             SDL_Window* window)
 {
     try {
-        uint32_t propertyCount;
-        VkResult vkRes = vkEnumerateInstanceLayerProperties(&propertyCount, nullptr);
-        if (vkRes != VK_SUCCESS) {
-            return std::unexpected(vkRes);
-        }
-        std::vector<VkLayerProperties> instanceLayerProperties(propertyCount);   // may throw
-        vkRes = vkEnumerateInstanceLayerProperties(&propertyCount, instanceLayerProperties.data());
-        if (vkRes != VK_SUCCESS) {
-            return std::unexpected(vkRes);
+        createInstanceAndDebug(requiredInstanceExtensions,
+                               enableValidationLayersIfSupported,
+                               enableDebugMessengerIfSupported);
+
+        SDL_bool SDLRes = SDL_Vulkan_CreateSurface(window, m_instance, reinterpret_cast<VkSurfaceKHR*>(&m_surface));
+        if (SDLRes != SDL_TRUE) {
+            throw vk::InitializationFailedError(SDL_GetError());   // To be consistent with Vulkan.hpp exceptions
         }
 
-        auto match = [](const VkLayerProperties& p) {
-            return std::strcmp(p.layerName, "VK_LAYER_KHRONOS_validation") == 0;
-        };
-
-        bool supportsValidationLayers = false;
-        if (auto result = std::ranges::find_if(instanceLayerProperties, match);
-            result != instanceLayerProperties.end()) {
-            supportsValidationLayers = true;
-        }
-        return supportsValidationLayers;
-    } catch (std::bad_alloc& e) {
-        return std::unexpected(VK_ERROR_OUT_OF_HOST_MEMORY);
+        assert(m_instance);
+        // assert(m_debugMessenger); // Allowed, can be nullptr if debug is disabled / not supported
+        assert(m_surface);
+        // Not implemented yet
+        // assert(m_physicalDevice);
+        // assert(m_device);
+        // assert(m_allocator);
+        // assert(m_swapchain);
+    } catch (...) {
+        cleanup();
+        throw;
     }
 }
 
-std::expected<bool, uint32_t> checkDebugMessengerSupport() noexcept
+VulkanContext::VulkanContext(VulkanContext&& rhs) noexcept
+    : m_instance(std::exchange(rhs.m_instance, nullptr))
+    , m_debugMessenger(std::exchange(rhs.m_debugMessenger, nullptr))
+    , m_surface(std::exchange(rhs.m_surface, nullptr))
+    , m_physicalDevice(std::exchange(rhs.m_physicalDevice, nullptr))
+    , m_device(std::exchange(rhs.m_device, nullptr))
+    , m_allocator(std::exchange(rhs.m_allocator, nullptr))
+    , m_swapchain(std::exchange(rhs.m_swapchain, nullptr))
+{}
+
+VulkanContext& VulkanContext::operator=(VulkanContext&& rhs) noexcept
 {
-    try {
-        uint32_t propertyCount;
-        VkResult vkRes = vkEnumerateInstanceExtensionProperties(nullptr, &propertyCount, nullptr);
-        if (vkRes != VK_SUCCESS) {
-            return std::unexpected(vkRes);
-        }
-
-        std::vector<VkExtensionProperties> instanceExtensionProperties(propertyCount);   // may throw
-        vkRes = vkEnumerateInstanceExtensionProperties(nullptr, &propertyCount, instanceExtensionProperties.data());
-        if (vkRes != VK_SUCCESS) {
-            return std::unexpected(vkRes);
-        }
-
-        auto match = [](const VkExtensionProperties& p) {
-            return std::strcmp(p.extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0;
-        };
-
-        bool supportsDebugMessenger = false;
-        if (auto result = std::ranges::find_if(instanceExtensionProperties, match);
-            result != instanceExtensionProperties.end()) {
-            supportsDebugMessenger = true;
-        }
-        return supportsDebugMessenger;
-    } catch (std::bad_alloc& e) {
-        return std::unexpected(VK_ERROR_OUT_OF_HOST_MEMORY);
+    if (this != &rhs) {
+        std::swap(m_instance, rhs.m_instance);
+        std::swap(m_debugMessenger, rhs.m_debugMessenger);
+        std::swap(m_surface, rhs.m_surface);
+        std::swap(m_physicalDevice, rhs.m_physicalDevice);
+        std::swap(m_device, rhs.m_device);
+        std::swap(m_allocator, rhs.m_allocator);
+        std::swap(m_swapchain, rhs.m_swapchain);
     }
+    return *this;
 }
 
-std::expected<std::pair<VkInstance, VkDebugUtilsMessengerEXT>, int32_t>
-    createInstanceAndDebug(std::span<const char*> requiredInstanceExtensions,
-                           bool enableValidationLayersIfSupported,
-                           bool enableDebugMessengerIfSupported) noexcept
+VulkanContext::~VulkanContext() noexcept
 {
-    VkResult vkRes = volkInitialize();
-    if (vkRes != VK_SUCCESS) {
-        return std::unexpected(vkRes);
-    }
+    cleanup();
+}
+
+void VulkanContext::createInstanceAndDebug(std::span<const char*> requiredInstanceExtensions,
+                                           bool enableValidationLayersIfSupported,
+                                           bool enableDebugMessengerIfSupported)
+{
+    VULKAN_HPP_DEFAULT_DISPATCHER.init();
 
     VkApplicationInfo applicationInfo {.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
                                        .pNext = nullptr,
@@ -138,157 +146,64 @@ std::expected<std::pair<VkInstance, VkDebugUtilsMessengerEXT>, int32_t>
 
     bool useValidationLayers = false;
     if (enableValidationLayersIfSupported) {
-        auto res = checkValidationLayersSupport();
-        if (!res.has_value()) {
-            return std::unexpected(res.error());
-        }
-        useValidationLayers = res.value();
+        useValidationLayers = checkValidationLayersSupport();
     }
 
     bool useDebugMessenger = false;
     if (enableDebugMessengerIfSupported) {
-        auto res = checkDebugMessengerSupport();
-        if (!res.has_value()) {
-            return std::unexpected(res.error());
-        }
-        useDebugMessenger = res.value();
+        useDebugMessenger = checkDebugMessengerSupport();
     }
 
     uint32_t layerCount = useValidationLayers ? 1 : 0;
     const char* pLayer = useValidationLayers ? "VK_LAYER_KHRONOS_validation" : nullptr;
 
-    try {
-        // may throw
-        std::vector<const char*> extensions(requiredInstanceExtensions.begin(), requiredInstanceExtensions.end());
-        if (useDebugMessenger) {
-            extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-        }
+    std::vector<const char*> extensions(requiredInstanceExtensions.begin(), requiredInstanceExtensions.end());
+    if (useDebugMessenger) {
+        extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    }
 
-        VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo {
-            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-            .pNext = nullptr,
-            .flags = 0,
-            .messageSeverity =
-                VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
-                VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
-            .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                           VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                           VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
-            .pfnUserCallback = debugMessengerCallback,
-            .pUserData = nullptr};
+    VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo {
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+        .pNext = nullptr,
+        .flags = 0,
+        .messageSeverity =
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+        .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                       VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+        .pfnUserCallback = debugMessengerCallback,
+        .pUserData = nullptr};
 
-        void* instancePNext = useDebugMessenger ? &debugMessengerCreateInfo : nullptr;
+    void* instancePNext = useDebugMessenger ? &debugMessengerCreateInfo : nullptr;
 
-        VkInstanceCreateInfo instanceCreateInfo {.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-                                                 .pNext = instancePNext,
-                                                 .flags = 0,
-                                                 .pApplicationInfo = &applicationInfo,
-                                                 .enabledLayerCount = layerCount,
-                                                 .ppEnabledLayerNames = &pLayer,
-                                                 .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
-                                                 .ppEnabledExtensionNames = extensions.data()};
+    VkInstanceCreateInfo instanceCreateInfo {.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+                                             .pNext = instancePNext,
+                                             .flags = 0,
+                                             .pApplicationInfo = &applicationInfo,
+                                             .enabledLayerCount = layerCount,
+                                             .ppEnabledLayerNames = &pLayer,
+                                             .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
+                                             .ppEnabledExtensionNames = extensions.data()};
 
-        VkInstance instance;
-        vkRes = vkCreateInstance(&instanceCreateInfo, nullptr, &instance);
-        if (vkRes != VK_SUCCESS) {
-            return std::unexpected(vkRes);
-        }
-        volkLoadInstance(instance);
+    m_instance = vk::createInstance(instanceCreateInfo);
+    VULKAN_HPP_DEFAULT_DISPATCHER.init(m_instance);
 
-        VkDebugUtilsMessengerEXT debugMessenger;
-        if (useDebugMessenger) {
-            vkRes = vkCreateDebugUtilsMessengerEXT(instance, &debugMessengerCreateInfo, nullptr, &debugMessenger);
-            if (vkRes != VK_SUCCESS) {
-                cleanup(instance);
-                return std::unexpected(vkRes);
-            }
-        } else {
-            debugMessenger = nullptr;
-        }
-        return std::pair<VkInstance, VkDebugUtilsMessengerEXT>(instance, debugMessenger);
-    } catch (std::bad_alloc& e) {
-        return std::unexpected(VK_ERROR_OUT_OF_HOST_MEMORY);
+    if (useDebugMessenger) {
+        m_debugMessenger = m_instance.createDebugUtilsMessengerEXT(debugMessengerCreateInfo);
     }
 }
 
-}   // namespace
-
-std::expected<VulkanContext, int32_t>
-    VulkanContext::createVulkanContext(std::span<const char*> requiredInstanceExtensions,
-                                       bool enableValidationLayersIfSupported,
-                                       bool enableDebugMessengerIfSupported,
-                                       SDL_Window* window) noexcept
+void VulkanContext::cleanup() noexcept
 {
-    auto instanceDebugRes = createInstanceAndDebug(requiredInstanceExtensions,
-                                                   enableValidationLayersIfSupported,
-                                                   enableDebugMessengerIfSupported);
-    if (!instanceDebugRes.has_value()) {
-        return std::unexpected(instanceDebugRes.error());
+    // This is reused both on the destructor and to cleanup resouce aquired during the constructor, if something failed.
+    // For the destructor, all members must be valid
+    if (m_surface) {
+        m_instance.destroySurfaceKHR(m_surface);
     }
-    const auto& [instance, debugMessenger] = instanceDebugRes.value();
-
-    VkSurfaceKHR surface;
-    SDL_bool SDLRes = SDL_Vulkan_CreateSurface(window, instance, &surface);
-    if (SDLRes != SDL_TRUE) {
-        cleanup(instance, debugMessenger);
-        return std::unexpected(0);   // 0 signals SDL_Error, as Vulkan uses 0 for VK_SUCCESS
+    if (m_debugMessenger) {
+        m_instance.destroyDebugUtilsMessengerEXT(m_debugMessenger);
     }
-
-    return VulkanContext(instance, debugMessenger, surface, nullptr, nullptr, nullptr, nullptr);
-}
-
-VulkanContext::VulkanContext(VkInstance_T* _instance,
-                             VkDebugUtilsMessengerEXT_T* _debugMessenger,
-                             VkSurfaceKHR_T* _surface,
-                             VkPhysicalDevice_T* _physicalDevice,
-                             VkDevice_T* _device,
-                             VmaAllocator_T* _allocator,
-                             VkSwapchainKHR_T* _swapchain) noexcept
-    : instance(_instance)
-    , debugMessenger(_debugMessenger)
-    , surface(_surface)
-    , physicalDevice(_physicalDevice)
-    , device(_device)
-    , allocator(_allocator)
-    , swapchain(_swapchain)
-{
-    assert(instance);
-    // assert(debugMessenger); // Allowed, can be nullptr if debug is disabled / not supported
-    assert(surface);
-    // Not implemented yet
-    // assert(physicalDevice);
-    // assert(device);
-    // assert(allocator);
-    // assert(swapchain);
-}
-
-VulkanContext::VulkanContext(VulkanContext&& rhs) noexcept
-    : instance(std::exchange(rhs.instance, nullptr))
-    , debugMessenger(std::exchange(rhs.debugMessenger, nullptr))
-    , surface(std::exchange(rhs.surface, nullptr))
-    , physicalDevice(std::exchange(rhs.physicalDevice, nullptr))
-    , device(std::exchange(rhs.device, nullptr))
-    , allocator(std::exchange(rhs.allocator, nullptr))
-    , swapchain(std::exchange(rhs.swapchain, nullptr))
-{}
-
-VulkanContext& VulkanContext::operator=(VulkanContext&& rhs) noexcept
-{
-    if (this != &rhs) {
-        std::swap(instance, rhs.instance);
-        std::swap(debugMessenger, rhs.debugMessenger);
-        std::swap(surface, rhs.surface);
-        std::swap(physicalDevice, rhs.physicalDevice);
-        std::swap(device, rhs.device);
-        std::swap(allocator, rhs.allocator);
-        std::swap(swapchain, rhs.swapchain);
-    }
-    return *this;
-}
-
-VulkanContext::~VulkanContext() noexcept
-{
-    cleanup(instance, debugMessenger, surface, device, allocator, swapchain);
+    m_instance.destroy();
 }
 
 }   // namespace core
