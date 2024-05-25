@@ -91,8 +91,8 @@ VulkanContext::VulkanContext(std::span<const char*> requiredInstanceExtensions,
         assert(m_instance);
         // assert(m_debugMessenger); // Allowed, can be nullptr if debug is disabled / not supported
         assert(m_surface);
+        assert(m_physicalDevice);
         // Not implemented yet
-        // assert(m_physicalDevice);
         // assert(m_device);
         // assert(m_allocator);
         // assert(m_swapchain);
