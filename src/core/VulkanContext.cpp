@@ -2,6 +2,8 @@
 
 #include "VulkanContext.hpp"
 
+#include "core/Logger.hpp"
+
 // libs
 #include <SDL.h>
 #include <SDL_video.h>
@@ -86,6 +88,7 @@ VulkanContext::VulkanContext(std::span<const char*> requiredInstanceExtensions,
         if (SDLRes != SDL_TRUE) {
             throw vk::InitializationFailedError(SDL_GetError());   // To be consistent with Vulkan.hpp exceptions
         }
+        DEBUG("Successfullly created surface\n");
 
         assert(m_instance);
         // assert(m_debugMessenger); // Allowed, can be nullptr if debug is disabled / not supported
@@ -144,14 +147,14 @@ void VulkanContext::createInstanceAndDebug(std::span<const char*> requiredInstan
                                        .engineVersion = VK_API_VERSION_1_0,
                                        .apiVersion = VK_API_VERSION_1_3};
 
-    bool useValidationLayers = false;
-    if (enableValidationLayersIfSupported) {
-        useValidationLayers = checkValidationLayersSupport();
+    bool useValidationLayers = enableValidationLayersIfSupported && checkValidationLayersSupport();
+    if (enableValidationLayersIfSupported && !useValidationLayers) {
+        INFO("Validation layer requested, but not supported\n");
     }
 
-    bool useDebugMessenger = false;
-    if (enableDebugMessengerIfSupported) {
-        useDebugMessenger = checkDebugMessengerSupport();
+    bool useDebugMessenger = enableDebugMessengerIfSupported && checkDebugMessengerSupport();
+    if (enableDebugMessengerIfSupported && !useDebugMessenger) {
+        INFO("Debug messenger util extension requested, but not supported\n");
     }
 
     uint32_t layerCount = useValidationLayers ? 1 : 0;
@@ -186,10 +189,12 @@ void VulkanContext::createInstanceAndDebug(std::span<const char*> requiredInstan
                                              .ppEnabledExtensionNames = extensions.data()};
 
     m_instance = vk::createInstance(instanceCreateInfo);
+    DEBUG("Successfullly created instance\n");
     VULKAN_HPP_DEFAULT_DISPATCHER.init(m_instance);
 
     if (useDebugMessenger) {
         m_debugMessenger = m_instance.createDebugUtilsMessengerEXT(debugMessengerCreateInfo);
+        DEBUG("Successfullly created debug messenger\n");
     }
 }
 

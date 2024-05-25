@@ -8,24 +8,24 @@
 
 int main()
 {
-    FATAL("test FATAL");
-    FATAL("test FATAL fmt {}", 3.14);
+    FATAL("test FATAL\n");
+    FATAL_FMT("test FATAL fmt {}\n", 3.14);
 
-    ERROR("test ERROR");
-    ERROR("test ERROR fmt {}", 3.14);
+    ERROR("test ERROR\n");
+    ERROR_FMT("test ERROR fmt {}\n", 3.14);
 
-    WARN("test WARN");
-    WARN("test WARN fmt {}", 3.14);
+    WARN("test WARN\n");
+    WARN_FMT("test WARN fmt {}\n", 3.14);
 
-    INFO("test INFO");
-    INFO("test INFO fmt {}", 3.14);
+    INFO("test INFO\n");
+    INFO_FMT("test INFO fmt {}\n", 3.14);
 
-    DEBUG("test DEBUG");
-    DEBUG("test DEBUG fmt {}", 3.14);
+    DEBUG("test DEBUG\n");
+    DEBUG_FMT("test DEBUG fmt {}\n", 3.14);
 
     std::string testMessage = "Hello";
-    TRACE("test TRACE");
-    TRACE("test TRACE fmt {} {} {} {}", 3.14, "Hi", testMessage, true);
+    TRACE("test TRACE\n");
+    TRACE_FMT("test TRACE fmt {} {} {} {}\n", 3.14, "Hi", testMessage, true);
 
     SDL_Init(SDL_INIT_VIDEO);
     SDL_Window* window = SDL_CreateWindow("Test window", 0, 0, 800, 600, SDL_WINDOW_VULKAN);

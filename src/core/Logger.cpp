@@ -1,7 +1,15 @@
 #include "Logger.hpp"
 
+// std
+#include <iostream>
+
 namespace core
 {
+
+void Logger::_log(Level l, std::string_view str)
+{
+    std::cout << toLabelCStr(l) << str;
+}
 
 const char* Logger::toLabelCStr(Logger::Level l) noexcept
 {
