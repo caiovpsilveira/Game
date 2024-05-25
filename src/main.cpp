@@ -1,29 +1,16 @@
-#include <SDL.h>
-#include <expected>
-#include <glm/glm.hpp>
-#include <iostream>
-#include <string>
-#include <vk_mem_alloc.h>
+#include "core/VulkanContext.hpp"
 
-struct S {
-    int a;
-    int b;
-};
+#include <iostream>
 
 int main() {
-    std::cout << "Test" << std::endl;
 
-    struct S testCpp20 {
-        .a = 10, .b = 20
-    };
+    auto vkContext = core::VulkanContext::createVulkanContext({}, true, true);
 
-    std::expected<int, std::string> test {};
-
-    auto v = SDL_TRUE;
-
-    auto vec = glm::vec3();
-
-    VmaAllocator allocator;
+    if (!vkContext.has_value())
+    {
+        std::cerr << "Vulkan context creation returned with error " << vkContext.error() << std::endl;
+        return -1;
+    }
 
     return 0;
 }

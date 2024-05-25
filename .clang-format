@@ -74,7 +74,7 @@ BraceWrapping:
   AfterClass: true
   AfterControlStatement: Never
   AfterEnum: false
-  AfterFunction: false
+  AfterFunction: true
   AfterStruct: false
   AfterUnion: false
   AfterExternBlock: false
