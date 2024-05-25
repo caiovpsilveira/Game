@@ -16,6 +16,7 @@
 #include <cassert>
 #include <cstring>
 #include <iostream>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -41,7 +42,7 @@ VkBool32 debugMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSe
     return VK_FALSE;
 }
 
-bool checkValidationLayersSupport()
+bool isValidationLayerSupported()
 {
     auto instanceLayerProperties = vk::enumerateInstanceLayerProperties();
 
@@ -56,20 +57,14 @@ bool checkValidationLayersSupport()
     return supportsValidationLayers;
 }
 
-bool checkDebugMessengerSupport()
+bool isExtensionSupported(std::span<vk::ExtensionProperties> availableExtensions, const char* extensionName) noexcept
 {
-    auto instanceExtensionProperties = vk::enumerateInstanceExtensionProperties();
-
-    auto match = [](const VkExtensionProperties& p) {
-        return std::strcmp(p.extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0;
+    auto match = [extensionName](const vk::ExtensionProperties& p) {
+        return std::strcmp(p.extensionName, extensionName) == 0;
     };
 
-    bool supportsDebugMessenger = false;
-    if (auto result = std::ranges::find_if(instanceExtensionProperties, match);
-        result != instanceExtensionProperties.end()) {
-        supportsDebugMessenger = true;
-    }
-    return supportsDebugMessenger;
+    auto result = std::ranges::find_if(availableExtensions, match);
+    return result != availableExtensions.end();
 }
 
 }   // namespace
@@ -86,9 +81,12 @@ VulkanContext::VulkanContext(std::span<const char*> requiredInstanceExtensions,
 
         SDL_bool SDLRes = SDL_Vulkan_CreateSurface(window, m_instance, reinterpret_cast<VkSurfaceKHR*>(&m_surface));
         if (SDLRes != SDL_TRUE) {
-            throw vk::InitializationFailedError(SDL_GetError());   // To be consistent with Vulkan.hpp exceptions
+            // To be consistent with vulkan.hpp, throw a vk::SystemError
+            throw vk::UnknownError(SDL_GetError());
         }
         DEBUG("Successfullly created surface\n");
+
+        createPhysicalDevice();
 
         assert(m_instance);
         // assert(m_debugMessenger); // Allowed, can be nullptr if debug is disabled / not supported
@@ -100,6 +98,7 @@ VulkanContext::VulkanContext(std::span<const char*> requiredInstanceExtensions,
         // assert(m_swapchain);
     } catch (...) {
         cleanup();
+        FATAL("VulkanContext creation failed\n");
         throw;
     }
 }
@@ -109,6 +108,7 @@ VulkanContext::VulkanContext(VulkanContext&& rhs) noexcept
     , m_debugMessenger(std::exchange(rhs.m_debugMessenger, nullptr))
     , m_surface(std::exchange(rhs.m_surface, nullptr))
     , m_physicalDevice(std::exchange(rhs.m_physicalDevice, nullptr))
+    , m_queueFamiliesIndices(rhs.m_queueFamiliesIndices)
     , m_device(std::exchange(rhs.m_device, nullptr))
     , m_allocator(std::exchange(rhs.m_allocator, nullptr))
     , m_swapchain(std::exchange(rhs.m_swapchain, nullptr))
@@ -121,6 +121,7 @@ VulkanContext& VulkanContext::operator=(VulkanContext&& rhs) noexcept
         std::swap(m_debugMessenger, rhs.m_debugMessenger);
         std::swap(m_surface, rhs.m_surface);
         std::swap(m_physicalDevice, rhs.m_physicalDevice);
+        m_queueFamiliesIndices = rhs.m_queueFamiliesIndices;
         std::swap(m_device, rhs.m_device);
         std::swap(m_allocator, rhs.m_allocator);
         std::swap(m_swapchain, rhs.m_swapchain);
@@ -147,12 +148,14 @@ void VulkanContext::createInstanceAndDebug(std::span<const char*> requiredInstan
                                        .engineVersion = VK_API_VERSION_1_0,
                                        .apiVersion = VK_API_VERSION_1_3};
 
-    bool useValidationLayers = enableValidationLayersIfSupported && checkValidationLayersSupport();
+    bool useValidationLayers = enableValidationLayersIfSupported && isValidationLayerSupported();
     if (enableValidationLayersIfSupported && !useValidationLayers) {
         INFO("Validation layer requested, but not supported\n");
     }
 
-    bool useDebugMessenger = enableDebugMessengerIfSupported && checkDebugMessengerSupport();
+    auto availableInstanceExtensions = vk::enumerateInstanceExtensionProperties();
+    bool useDebugMessenger = enableDebugMessengerIfSupported &&
+                             isExtensionSupported(availableInstanceExtensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     if (enableDebugMessengerIfSupported && !useDebugMessenger) {
         INFO("Debug messenger util extension requested, but not supported\n");
     }
@@ -198,10 +201,68 @@ void VulkanContext::createInstanceAndDebug(std::span<const char*> requiredInstan
     }
 }
 
+void VulkanContext::createPhysicalDevice()
+{
+    // TODO: improve physical device selection.
+    // Currently selecting the first one with graphicsQueueFamily + presentQueueFamily + swapchainSupport
+
+    auto physicalDevices = m_instance.enumeratePhysicalDevices();
+
+    for (const auto& pd : physicalDevices) {
+        auto pdProperties = pd.getProperties();
+        DEBUG_FMT("Encountered physical device: {}\n", static_cast<const char*>(pdProperties.deviceName));
+    }
+
+    for (const auto& pd : physicalDevices) {
+        auto queueFamiliesProperties = pd.getQueueFamilyProperties();
+        std::optional<uint32_t> graphicsFamilyIndex;
+        std::optional<uint32_t> presentFamilyIndex;
+        for (size_t i = 0; i < queueFamiliesProperties.size(); ++i) {
+            const auto& qp = queueFamiliesProperties[i];
+            if (qp.queueFlags & vk::QueueFlagBits::eGraphics) {
+                graphicsFamilyIndex = i;
+            }
+            if (pd.getSurfaceSupportKHR(i, m_surface)) {
+                presentFamilyIndex = i;
+            }
+            if (graphicsFamilyIndex && presentFamilyIndex) {
+                break;
+            }
+        }
+
+        auto availablePhysicalDeviceExtensions = pd.enumerateDeviceExtensionProperties();
+        bool swapchainSupport =
+            isExtensionSupported(availablePhysicalDeviceExtensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+
+        if (graphicsFamilyIndex && presentFamilyIndex && swapchainSupport) {
+            m_physicalDevice = pd;
+            m_queueFamiliesIndices.graphicsFamilyIndex = *graphicsFamilyIndex;
+            m_queueFamiliesIndices.presentFamilyIndex = *presentFamilyIndex;
+
+            auto pdProperties = pd.getProperties();
+            DEBUG_FMT(
+                "Successfully encountered a suitable physical device.\nName: {}\nApi version: p{} {}.{}.{}\nDriver "
+                "version: {}\n",
+                static_cast<const char*>(pdProperties.deviceName),
+                vk::apiVersionVariant(pdProperties.apiVersion),
+                vk::apiVersionMajor(pdProperties.apiVersion),
+                vk::apiVersionMinor(pdProperties.apiVersion),
+                vk::apiVersionPatch(pdProperties.apiVersion),
+                pdProperties.driverVersion);
+
+            return;
+        }
+    }
+    // To be consistent with vulkan.hpp, throw a vk::SystemError
+    throw vk::UnknownError("No physical device matched the application requirements");
+}
+
 void VulkanContext::cleanup() noexcept
 {
     // This is reused both on the destructor and to cleanup resouce aquired during the constructor, if something failed.
-    // For the destructor, all members must be valid
+    // For the destructor, all members must be in a valid state, otherwise the constructor must have throwed
+
+    // PhysicalDevice is owned by the VkInstance
     if (m_surface) {
         m_instance.destroySurfaceKHR(m_surface);
     }

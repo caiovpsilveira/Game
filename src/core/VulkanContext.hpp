@@ -16,8 +16,13 @@ namespace core
 class VulkanContext
 {
 public:
+    struct QueueFamiliesIndices {
+        uint32_t graphicsFamilyIndex;
+        uint32_t presentFamilyIndex;
+    };
+
     VulkanContext() noexcept = default;
-    VulkanContext(std::span<const char*> requiredInstanceSurfaceExtensions,
+    VulkanContext(std::span<const char*> requiredInstanceExtensions,
                   bool enableValidationLayersIfSupported,
                   bool enableDebugMessengerIfSupported,
                   SDL_Window* window);
@@ -35,6 +40,8 @@ private:
                                 bool enableValidationLayersIfSupported,
                                 bool enableDebugMessengerIfSupported);
 
+    void createPhysicalDevice();
+
     void cleanup() noexcept;
 
 private:
@@ -42,6 +49,7 @@ private:
     vk::DebugUtilsMessengerEXT m_debugMessenger = nullptr;
     vk::SurfaceKHR m_surface = nullptr;
     vk::PhysicalDevice m_physicalDevice = nullptr;
+    QueueFamiliesIndices m_queueFamiliesIndices;
     vk::Device m_device = nullptr;
     VmaAllocator_T* m_allocator = nullptr;
     vk::SwapchainKHR m_swapchain = nullptr;
