@@ -6,22 +6,25 @@
 namespace core
 {
 
-void Logger::_log(Level l, std::string_view str)
+namespace
 {
-    std::cout << toLabelCStr(l) << str;
-}
-
-const char* Logger::toLabelCStr(Logger::Level l) noexcept
+const char* toLabelCStr(LogLevel l) noexcept
 {
     switch (l) {
-        case Logger::Level::FATAL: return "[FATAL]: ";
-        case Logger::Level::ERROR: return "[ERROR]: ";
-        case Logger::Level::WARN: return "[WARN]: ";
-        case Logger::Level::INFO: return "[INFO]: ";
-        case Logger::Level::DEBUG: return "[DEBUG]: ";
-        case Logger::Level::TRACE:
+        case LogLevel::FATAL: return "[FATAL]: ";
+        case LogLevel::ERROR: return "[ERROR]: ";
+        case LogLevel::WARN: return "[WARN]: ";
+        case LogLevel::INFO: return "[INFO]: ";
+        case LogLevel::DEBUG: return "[DEBUG]: ";
+        case LogLevel::TRACE:
         default: return "[TRACE]: ";
     }
+}
+}   // namespace
+
+void _log(LogLevel l, std::string_view str)
+{
+    std::cout << toLabelCStr(l) << str;
 }
 
 }   // namespace core
