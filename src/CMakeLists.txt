@@ -1,4 +1,5 @@
 target_sources(voxel_game PRIVATE
+               core/Logger.cpp
                core/VulkanContext.cpp
                main.cpp)
 

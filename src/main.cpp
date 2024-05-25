@@ -1,3 +1,4 @@
+#include "core/Logger.hpp"
 #include "core/VulkanContext.hpp"
 
 #include <SDL.h>
@@ -6,6 +7,24 @@
 
 int main()
 {
+    FATAL("test FATAL");
+    FATAL("test FATAL fmt {}", 3.14);
+
+    ERROR("test ERROR");
+    ERROR("test ERROR fmt {}", 3.14);
+
+    WARN("test WARN");
+    WARN("test WARN fmt {}", 3.14);
+
+    INFO("test INFO");
+    INFO("test INFO fmt {}", 3.14);
+
+    DEBUG("test DEBUG");
+    DEBUG("test DEBUG fmt {}", 3.14);
+
+    std::string testMessage = "Hello";
+    TRACE("test TRACE");
+    TRACE("test TRACE fmt {} {} {} {}", 3.14, "Hi", testMessage, true);
 
     SDL_Init(SDL_INIT_VIDEO);
 
