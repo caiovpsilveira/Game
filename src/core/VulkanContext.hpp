@@ -44,6 +44,8 @@ private:
 
     void createLogicalDevice();
 
+    void createAllocator();
+
     void cleanup() noexcept;
 
 private:

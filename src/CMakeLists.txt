@@ -4,4 +4,4 @@ target_sources(voxel_game PRIVATE
                main.cpp)
 
 target_include_directories(voxel_game PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(voxel_game PRIVATE glm SDL2 vulkan)
+target_link_libraries(voxel_game PRIVATE glm SDL2)

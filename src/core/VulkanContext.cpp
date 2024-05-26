@@ -1,4 +1,9 @@
+// Dynamic loader/dispatcher settings for vulkan.hpp and VMA
 #define VK_NO_PROTOTYPES
+#define VMA_STATIC_VULKAN_FUNCTIONS 0
+// CHECKME why? Vulkan HPP default dispatcher should be able to load all extensions?
+#define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
+#define VMA_IMPLEMENTATION
 
 #include "VulkanContext.hpp"
 
@@ -100,6 +105,8 @@ VulkanContext::VulkanContext(std::span<const char*> requiredInstanceExtensions,
 
         createLogicalDevice();
 
+        createAllocator();
+
         assert(m_instance);
         // assert(m_debugMessenger); // Allowed, can be nullptr if debug is disabled / not supported
         assert(m_surface);
@@ -107,8 +114,8 @@ VulkanContext::VulkanContext(std::span<const char*> requiredInstanceExtensions,
         assert(m_device);
         assert(m_graphicsQueue);
         assert(m_presentQueue);
+        assert(m_allocator);
         // Not implemented yet
-        // assert(m_allocator);
         // assert(m_swapchain);
     } catch (...) {
         cleanup();
@@ -317,11 +324,35 @@ void VulkanContext::createLogicalDevice()
     m_presentQueue = m_device.getQueue(m_queueFamiliesIndices.presentFamilyIndex, 0);
 }
 
+void VulkanContext::createAllocator()
+{
+    const auto& d = VULKAN_HPP_DEFAULT_DISPATCHER;
+    VmaVulkanFunctions vulkanFunctions {};
+    vulkanFunctions.vkGetInstanceProcAddr = d.vkGetInstanceProcAddr;
+    vulkanFunctions.vkGetDeviceProcAddr = d.vkGetDeviceProcAddr;
+
+    VmaAllocatorCreateInfo allocatorCreateInfo {};
+    allocatorCreateInfo.physicalDevice = m_physicalDevice, allocatorCreateInfo.device = m_device,
+    allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
+    allocatorCreateInfo.instance = m_instance, allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_3;
+
+    VkResult res = vmaCreateAllocator(&allocatorCreateInfo, &m_allocator);
+    if (res != VK_SUCCESS) {
+        // To be consistent with vulkan.hpp, throw a vk::SystemError
+        throw vk::UnknownError(std::string("VulkanMemoryAllocator initialization failed with code ") +
+                               std::to_string(res));
+    }
+    DEBUG("Successfully created vmaAllocator\n");
+}
+
 void VulkanContext::cleanup() noexcept
 {
     // This is reused both on the destructor and to cleanup resouce aquired during the constructor, if something failed.
-    // For the destructor, all members must be in a valid state, otherwise the constructor must have throwed
+    // For the destructor, all members must be in a valid state, otherwise the constructor must have thrown
 
+    if (m_allocator) {
+        vmaDestroyAllocator(m_allocator);
+    }
     // Queues are owned by device
     if (m_device) {
         m_device.destroy();
