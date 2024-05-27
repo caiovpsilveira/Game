@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstring>
+#include <limits>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -107,6 +108,8 @@ VulkanContext::VulkanContext(std::span<const char*> requiredInstanceExtensions,
 
         createAllocator();
 
+        createSwapchain(window);
+
         assert(m_instance);
         // assert(m_debugMessenger); // Allowed, can be nullptr if debug is disabled / not supported
         assert(m_surface);
@@ -115,8 +118,7 @@ VulkanContext::VulkanContext(std::span<const char*> requiredInstanceExtensions,
         assert(m_graphicsQueue);
         assert(m_presentQueue);
         assert(m_allocator);
-        // Not implemented yet
-        // assert(m_swapchain);
+        assert(m_swapchain);
     } catch (...) {
         cleanup();
         FATAL("VulkanContext creation failed\n");
@@ -255,7 +257,13 @@ void VulkanContext::createPhysicalDevice()
             }
         }
 
+        // Query swapchain support
+        // The Vulkan specs requires VK_KHR_surface extension to support at least VK_PRESENT_MODE_FIFO_KHR present mode
+        // (ref VkPresentModeKHR(3) Manual Page), and requires at least one VkSurfaceFormatKHR to be supported, with
+        // format != undefined (ref vkGetPhysicalDeviceSurfaceFormatsKHR(3) Manual Page).
+        // Just checking if the VK_KHR_swapchain is supported is enough.
         auto availablePhysicalDeviceExtensions = pd.enumerateDeviceExtensionProperties();
+
         bool swapchainSupport =
             isExtensionSupported(availablePhysicalDeviceExtensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
@@ -345,11 +353,92 @@ void VulkanContext::createAllocator()
     DEBUG("Successfully created vmaAllocator\n");
 }
 
+void VulkanContext::createSwapchain(SDL_Window* window)
+{
+    auto presentModes = m_physicalDevice.getSurfacePresentModesKHR(m_surface);
+    auto selectedPresentMode = std::ranges::find(presentModes, vk::PresentModeKHR::eMailbox) != presentModes.end()
+                                   ? vk::PresentModeKHR::eMailbox
+                                   : vk::PresentModeKHR::eFifo;
+
+    auto surfaceFormats = m_physicalDevice.getSurfaceFormatsKHR(m_surface);
+    // Vulkan.hpp provides trivial operator==
+    auto selectedSurfaceFormat =
+        std::ranges::find(surfaceFormats,
+                          vk::SurfaceFormatKHR {vk::Format::eB8G8R8A8Srgb, vk::ColorSpaceKHR::eSrgbNonlinear}) !=
+                surfaceFormats.end()
+            ? vk::SurfaceFormatKHR {vk::Format::eB8G8R8A8Srgb, vk::ColorSpaceKHR::eSrgbNonlinear}
+            : surfaceFormats[0];
+
+    auto surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(m_surface);
+    vk::Extent2D swapchainExtent;
+
+    if (surfaceCapabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
+        swapchainExtent = surfaceCapabilities.currentExtent;
+    } else {
+        int w, h;
+        SDL_Vulkan_GetDrawableSize(window, &w, &h);
+        vk::Extent2D actualExtent(static_cast<uint32_t>(w), static_cast<uint32_t>(h));
+
+        actualExtent.width = std::clamp(actualExtent.width,
+                                        surfaceCapabilities.minImageExtent.width,
+                                        surfaceCapabilities.maxImageExtent.width);
+
+        actualExtent.height = std::clamp(actualExtent.height,
+                                         surfaceCapabilities.minImageExtent.height,
+                                         surfaceCapabilities.maxImageExtent.height);
+        swapchainExtent = actualExtent;
+    }
+
+    uint32_t imageCount = surfaceCapabilities.maxImageCount == 0   // unlimited
+                              ? surfaceCapabilities.minImageCount + 1
+                              : std::min(surfaceCapabilities.maxImageCount, surfaceCapabilities.minImageCount + 1);
+
+    vk::SharingMode imageSharingMode;
+    uint32_t queueFamilyIndexCount;
+    uint32_t* pQueueFamilyIndices;
+    uint32_t queueFamilyIndices[] = {m_queueFamiliesIndices.graphicsFamilyIndex,
+                                     m_queueFamiliesIndices.presentFamilyIndex};
+
+    if (m_queueFamiliesIndices.graphicsFamilyIndex != m_queueFamiliesIndices.presentFamilyIndex) {
+        imageSharingMode = vk::SharingMode::eConcurrent;
+        queueFamilyIndexCount = std::size(queueFamilyIndices);
+        pQueueFamilyIndices = queueFamilyIndices;
+    } else {
+        imageSharingMode = vk::SharingMode::eExclusive;
+        queueFamilyIndexCount = 0;
+        pQueueFamilyIndices = nullptr;
+    }
+
+    vk::SwapchainCreateInfoKHR swapchainCreateInfo({},
+                                                   m_surface,
+                                                   imageCount,
+                                                   selectedSurfaceFormat.format,
+                                                   selectedSurfaceFormat.colorSpace,
+                                                   swapchainExtent,
+                                                   1,
+                                                   vk::ImageUsageFlagBits::eColorAttachment,
+                                                   imageSharingMode,
+                                                   queueFamilyIndexCount,
+                                                   pQueueFamilyIndices,
+                                                   surfaceCapabilities.currentTransform,
+                                                   vk::CompositeAlphaFlagBitsKHR::eOpaque,
+                                                   selectedPresentMode,
+                                                   vk::True,
+                                                   {},
+                                                   {});
+
+    m_swapchain = m_device.createSwapchainKHR(swapchainCreateInfo);
+}
+
 void VulkanContext::cleanup() noexcept
 {
     // This is reused both on the destructor and to cleanup resouce aquired during the constructor, if something failed.
     // For the destructor, all members must be in a valid state, otherwise the constructor must have thrown
 
+    if (m_swapchain) {
+        assert(m_device);
+        m_device.destroySwapchainKHR(m_swapchain);
+    }
     if (m_allocator) {
         vmaDestroyAllocator(m_allocator);
     }
@@ -359,12 +448,16 @@ void VulkanContext::cleanup() noexcept
     }
     // PhysicalDevice is owned by the instance
     if (m_surface) {
+        assert(m_instance);
         m_instance.destroySurfaceKHR(m_surface);
     }
     if (m_debugMessenger) {
+        assert(m_instance);
         m_instance.destroyDebugUtilsMessengerEXT(m_debugMessenger);
     }
-    m_instance.destroy();
+    if (m_instance) {
+        m_instance.destroy();
+    }
 }
 
 }   // namespace core

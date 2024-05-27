@@ -46,6 +46,8 @@ private:
 
     void createAllocator();
 
+    void createSwapchain(SDL_Window* window);
+
     void cleanup() noexcept;
 
 private:
