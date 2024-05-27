@@ -418,6 +418,9 @@ void VulkanContext::cleanup() noexcept
     // This is reused both on the destructor and to cleanup resouce aquired during the constructor, if something failed.
     // For the destructor, all members must be in a valid state, otherwise the constructor must have thrown
 
+    if (m_device) {
+        m_device.waitIdle();
+    }
     if (m_swapchain) {
         assert(m_device);
         m_device.destroySwapchainKHR(m_swapchain);
