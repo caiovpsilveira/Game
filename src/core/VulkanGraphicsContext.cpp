@@ -1,5 +1,9 @@
 // Dynamic loader/dispatcher settings for vulkan.hpp and VMA
 #define VK_NO_PROTOTYPES
+
+#define VULKAN_HPP_NO_SMART_HANDLE
+#define VULKAN_HPP_NO_CONSTRUCTORS
+
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 // CHECKME why? Vulkan HPP default dispatcher should be able to load all extensions?
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
@@ -169,12 +173,13 @@ void VulkanGraphicsContext::createInstanceAndDebug(std::span<const char* const> 
 {
     VULKAN_HPP_DEFAULT_DISPATCHER.init();
 
-    vk::ApplicationInfo applicationInfo("Voxel game",
-                                        vk::makeApiVersion(0, 0, 1, 0),
-                                        "No engine",
-                                        vk::ApiVersion10,
-                                        vk::ApiVersion13,
-                                        nullptr);
+    vk::ApplicationInfo applicationInfo {.sType = vk::StructureType::eApplicationInfo,
+                                         .pNext = nullptr,
+                                         .pApplicationName = "Voxel game",
+                                         .applicationVersion = vk::makeApiVersion(0, 0, 1, 0),
+                                         .pEngineName = "No engine",
+                                         .engineVersion = vk::ApiVersion10,
+                                         .apiVersion = vk::ApiVersion13};
 
     bool useValidationLayers = enableValidationLayersIfSupported && isValidationLayerSupported();
     if (enableValidationLayersIfSupported && !useValidationLayers) {
@@ -196,25 +201,29 @@ void VulkanGraphicsContext::createInstanceAndDebug(std::span<const char* const> 
         extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     }
 
-    vk::DebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo(
-        {},
-        vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose | vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo |
+    vk::DebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo {
+        .sType = vk::StructureType::eDebugUtilsMessengerCreateInfoEXT,
+        .pNext = nullptr,
+        .flags = {},
+        .messageSeverity =
+            vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose | vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo |
             vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
-        vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation |
-            vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
-        debugMessengerCallback,
-        {},
-        nullptr);
+        .messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
+                       vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation |
+                       vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
+        .pfnUserCallback = debugMessengerCallback,
+        .pUserData = nullptr};
 
     void* instancePNext = useDebugMessenger ? &debugMessengerCreateInfo : nullptr;
 
-    vk::InstanceCreateInfo instanceCreateInfo({},
-                                              &applicationInfo,
-                                              layerCount,
-                                              &pLayer,
-                                              static_cast<uint32_t>(extensions.size()),
-                                              extensions.data(),
-                                              instancePNext);
+    vk::InstanceCreateInfo instanceCreateInfo {.sType = vk::StructureType::eInstanceCreateInfo,
+                                               .pNext = instancePNext,
+                                               .flags = {},
+                                               .pApplicationInfo = &applicationInfo,
+                                               .enabledLayerCount = layerCount,
+                                               .ppEnabledLayerNames = &pLayer,
+                                               .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
+                                               .ppEnabledExtensionNames = extensions.data()};
 
     m_instance = vk::createInstance(instanceCreateInfo);
     DEBUG("Successfullly created instance\n");
@@ -296,17 +305,34 @@ void VulkanGraphicsContext::createLogicalDevice()
     uniqueQueueFamiliesIndices.erase(std::unique(uniqueQueueFamiliesIndices.begin(), uniqueQueueFamiliesIndices.end()),
                                      uniqueQueueFamiliesIndices.end());
 
-    float queuePriority = 1.f;
+    float queuePriorities[] {1.f};
     std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
+    queueCreateInfos.reserve(uniqueQueueFamiliesIndices.size());
 
-    for (uint32_t queueFamilyIndex : uniqueQueueFamiliesIndices) {
-        vk::DeviceQueueCreateInfo queueCreateInfo({}, queueFamilyIndex, 1, &queuePriority, nullptr);
-        queueCreateInfos.push_back(queueCreateInfo);
-    }
+    std::transform(uniqueQueueFamiliesIndices.begin(),
+                   uniqueQueueFamiliesIndices.end(),
+                   std::back_inserter(queueCreateInfos),
+                   [&queuePriorities](uint32_t queueFamilyIndex) {
+                       return vk::DeviceQueueCreateInfo {.sType = vk::StructureType::eDeviceQueueCreateInfo,
+                                                         .pNext = nullptr,
+                                                         .flags = {},
+                                                         .queueFamilyIndex = queueFamilyIndex,
+                                                         .queueCount = std::size(queuePriorities),
+                                                         .pQueuePriorities = queuePriorities};
+                   });
 
     std::vector<const char*> enabledExtensions {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
-    vk::DeviceCreateInfo deviceCreateInfo({}, queueCreateInfos, {}, enabledExtensions, {}, nullptr);
+    vk::DeviceCreateInfo deviceCreateInfo {.sType = vk::StructureType::eDeviceCreateInfo,
+                                           .pNext = nullptr,
+                                           .flags = {},
+                                           .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
+                                           .pQueueCreateInfos = queueCreateInfos.data(),
+                                           .enabledLayerCount = 0,
+                                           .ppEnabledLayerNames = nullptr,
+                                           .enabledExtensionCount = static_cast<uint32_t>(enabledExtensions.size()),
+                                           .ppEnabledExtensionNames = enabledExtensions.data(),
+                                           .pEnabledFeatures = nullptr};
 
     m_device = m_physicalDevice.createDevice(deviceCreateInfo);
     DEBUG("Successfully created logical device\n");
@@ -393,23 +419,24 @@ void VulkanGraphicsContext::createSwapchain(SDL_Window* window)
         pQueueFamilyIndices = nullptr;
     }
 
-    vk::SwapchainCreateInfoKHR swapchainCreateInfo({},
-                                                   m_surface,
-                                                   imageCount,
-                                                   selectedSurfaceFormat.format,
-                                                   selectedSurfaceFormat.colorSpace,
-                                                   swapchainExtent,
-                                                   1,
-                                                   vk::ImageUsageFlagBits::eColorAttachment,
-                                                   imageSharingMode,
-                                                   queueFamilyIndexCount,
-                                                   pQueueFamilyIndices,
-                                                   surfaceCapabilities.currentTransform,
-                                                   vk::CompositeAlphaFlagBitsKHR::eOpaque,
-                                                   selectedPresentMode,
-                                                   vk::True,
-                                                   {},
-                                                   {});
+    vk::SwapchainCreateInfoKHR swapchainCreateInfo {.sType = vk::StructureType::eSwapchainCreateInfoKHR,
+                                                    .pNext = nullptr,
+                                                    .flags = {},
+                                                    .surface = m_surface,
+                                                    .minImageCount = imageCount,
+                                                    .imageFormat = selectedSurfaceFormat.format,
+                                                    .imageColorSpace = selectedSurfaceFormat.colorSpace,
+                                                    .imageExtent = swapchainExtent,
+                                                    .imageArrayLayers = 1,
+                                                    .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
+                                                    .imageSharingMode = imageSharingMode,
+                                                    .queueFamilyIndexCount = queueFamilyIndexCount,
+                                                    .pQueueFamilyIndices = pQueueFamilyIndices,
+                                                    .preTransform = surfaceCapabilities.currentTransform,
+                                                    .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
+                                                    .presentMode = selectedPresentMode,
+                                                    .clipped = vk::True,
+                                                    .oldSwapchain = nullptr};
 
     m_swapchain = m_device.createSwapchainKHR(swapchainCreateInfo);
     DEBUG("Successfully created swapchain\n");
