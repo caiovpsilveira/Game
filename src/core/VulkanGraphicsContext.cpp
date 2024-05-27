@@ -5,7 +5,7 @@
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
 #define VMA_IMPLEMENTATION
 
-#include "VulkanContext.hpp"
+#include "VulkanGraphicsContext.hpp"
 
 #include "Logger.hpp"
 
@@ -85,10 +85,10 @@ bool isExtensionSupported(std::span<vk::ExtensionProperties> availableExtensions
 
 }   // namespace
 
-VulkanContext::VulkanContext(std::span<const char*> requiredInstanceExtensions,
-                             bool enableValidationLayersIfSupported,
-                             bool enableDebugMessengerIfSupported,
-                             SDL_Window* window)
+VulkanGraphicsContext::VulkanGraphicsContext(std::span<const char*> requiredInstanceExtensions,
+                                             bool enableValidationLayersIfSupported,
+                                             bool enableDebugMessengerIfSupported,
+                                             SDL_Window* window)
 {
     try {
         createInstanceAndDebug(requiredInstanceExtensions,
@@ -102,7 +102,7 @@ VulkanContext::VulkanContext(std::span<const char*> requiredInstanceExtensions,
         }
         DEBUG("Successfullly created surface\n");
 
-        createPhysicalDevice();
+        searchPhysicalDevice();
 
         createLogicalDevice();
 
@@ -121,12 +121,12 @@ VulkanContext::VulkanContext(std::span<const char*> requiredInstanceExtensions,
         assert(m_swapchain);
     } catch (...) {
         cleanup();
-        FATAL("VulkanContext creation failed\n");
+        FATAL("VulkanGraphicsContext creation failed\n");
         throw;
     }
 }
 
-VulkanContext::VulkanContext(VulkanContext&& rhs) noexcept
+VulkanGraphicsContext::VulkanGraphicsContext(VulkanGraphicsContext&& rhs) noexcept
     : m_instance(std::exchange(rhs.m_instance, nullptr))
     , m_debugMessenger(std::exchange(rhs.m_debugMessenger, nullptr))
     , m_surface(std::exchange(rhs.m_surface, nullptr))
@@ -139,7 +139,7 @@ VulkanContext::VulkanContext(VulkanContext&& rhs) noexcept
     , m_swapchain(std::exchange(rhs.m_swapchain, nullptr))
 {}
 
-VulkanContext& VulkanContext::operator=(VulkanContext&& rhs) noexcept
+VulkanGraphicsContext& VulkanGraphicsContext::operator=(VulkanGraphicsContext&& rhs) noexcept
 {
     if (this != &rhs) {
         std::swap(m_instance, rhs.m_instance);
@@ -156,14 +156,14 @@ VulkanContext& VulkanContext::operator=(VulkanContext&& rhs) noexcept
     return *this;
 }
 
-VulkanContext::~VulkanContext() noexcept
+VulkanGraphicsContext::~VulkanGraphicsContext() noexcept
 {
     cleanup();
 }
 
-void VulkanContext::createInstanceAndDebug(std::span<const char*> requiredInstanceExtensions,
-                                           bool enableValidationLayersIfSupported,
-                                           bool enableDebugMessengerIfSupported)
+void VulkanGraphicsContext::createInstanceAndDebug(std::span<const char*> requiredInstanceExtensions,
+                                                   bool enableValidationLayersIfSupported,
+                                                   bool enableDebugMessengerIfSupported)
 {
     VULKAN_HPP_DEFAULT_DISPATCHER.init();
 
@@ -224,7 +224,7 @@ void VulkanContext::createInstanceAndDebug(std::span<const char*> requiredInstan
     }
 }
 
-void VulkanContext::createPhysicalDevice()
+void VulkanGraphicsContext::searchPhysicalDevice()
 {
     // TODO: improve physical device selection.
     // Currently selecting the first one with graphicsQueueFamily + presentQueueFamily + swapchainSupport
@@ -286,7 +286,7 @@ void VulkanContext::createPhysicalDevice()
     throw vk::UnknownError("No physical device matched the application requirements");
 }
 
-void VulkanContext::createLogicalDevice()
+void VulkanGraphicsContext::createLogicalDevice()
 {
     std::vector<uint32_t> uniqueQueueFamiliesIndices {m_queueFamiliesIndices.graphicsFamilyIndex,
                                                       m_queueFamiliesIndices.presentFamilyIndex};
@@ -314,7 +314,7 @@ void VulkanContext::createLogicalDevice()
     m_presentQueue = m_device.getQueue(m_queueFamiliesIndices.presentFamilyIndex, 0);
 }
 
-void VulkanContext::createAllocator()
+void VulkanGraphicsContext::createAllocator()
 {
     const auto& d = VULKAN_HPP_DEFAULT_DISPATCHER;
     VmaVulkanFunctions vulkanFunctions {};
@@ -335,7 +335,7 @@ void VulkanContext::createAllocator()
     DEBUG("Successfully created vmaAllocator\n");
 }
 
-void VulkanContext::createSwapchain(SDL_Window* window)
+void VulkanGraphicsContext::createSwapchain(SDL_Window* window)
 {
     auto presentModes = m_physicalDevice.getSurfacePresentModesKHR(m_surface);
     auto selectedPresentMode = std::ranges::find(presentModes, vk::PresentModeKHR::eMailbox) != presentModes.end()
@@ -413,7 +413,7 @@ void VulkanContext::createSwapchain(SDL_Window* window)
     DEBUG("Successfully created swapchain\n");
 }
 
-void VulkanContext::cleanup() noexcept
+void VulkanGraphicsContext::cleanup() noexcept
 {
     // This is reused both on the destructor and to cleanup resouce aquired during the constructor, if something failed.
     // For the destructor, all members must be in a valid state, otherwise the constructor must have thrown

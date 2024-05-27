@@ -1,6 +1,6 @@
 target_sources(voxel_game PRIVATE
                core/Logger.cpp
-               core/VulkanContext.cpp
+               core/VulkanGraphicsContext.cpp
                main.cpp)
 
 target_include_directories(voxel_game PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

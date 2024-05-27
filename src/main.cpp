@@ -1,5 +1,5 @@
 #include "core/Logger.hpp"
-#include "core/VulkanContext.hpp"
+#include "core/VulkanGraphicsContext.hpp"
 
 #include <SDL.h>
 #include <SDL_vulkan.h>
@@ -36,7 +36,7 @@ int main()
     SDL_Vulkan_GetInstanceExtensions(window, &count, ext.data());
 
     try {
-        auto vkContext = core::VulkanContext(ext, true, true, window);
+        auto vkContext = core::VulkanGraphicsContext(ext, true, true, window);
     } catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
     }
