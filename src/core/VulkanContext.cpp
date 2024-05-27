@@ -62,7 +62,7 @@ bool isValidationLayerSupported()
 {
     auto instanceLayerProperties = vk::enumerateInstanceLayerProperties();
 
-    auto match = [](const VkLayerProperties& p) {
+    auto match = [](const vk::LayerProperties& p) {
         return std::strcmp(p.layerName, "VK_LAYER_KHRONOS_validation") == 0;
     };
 
@@ -167,13 +167,12 @@ void VulkanContext::createInstanceAndDebug(std::span<const char*> requiredInstan
 {
     VULKAN_HPP_DEFAULT_DISPATCHER.init();
 
-    VkApplicationInfo applicationInfo {.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-                                       .pNext = nullptr,
-                                       .pApplicationName = "Voxel game",
-                                       .applicationVersion = VK_MAKE_API_VERSION(0, 0, 1, 0),
-                                       .pEngineName = "No engine",
-                                       .engineVersion = VK_API_VERSION_1_0,
-                                       .apiVersion = VK_API_VERSION_1_3};
+    vk::ApplicationInfo applicationInfo("Voxel game",
+                                        vk::makeApiVersion(0, 0, 1, 0),
+                                        "No engine",
+                                        vk::ApiVersion10,
+                                        vk::ApiVersion13,
+                                        nullptr);
 
     bool useValidationLayers = enableValidationLayersIfSupported && isValidationLayerSupported();
     if (enableValidationLayersIfSupported && !useValidationLayers) {
@@ -195,28 +194,25 @@ void VulkanContext::createInstanceAndDebug(std::span<const char*> requiredInstan
         extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     }
 
-    VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo {
-        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-        .pNext = nullptr,
-        .flags = 0,
-        .messageSeverity =
-            VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
-            VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
-        .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                       VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
-        .pfnUserCallback = debugMessengerCallback,
-        .pUserData = nullptr};
+    vk::DebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo(
+        {},
+        vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose | vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo |
+            vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
+        vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation |
+            vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
+        debugMessengerCallback,
+        {},
+        nullptr);
 
     void* instancePNext = useDebugMessenger ? &debugMessengerCreateInfo : nullptr;
 
-    VkInstanceCreateInfo instanceCreateInfo {.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-                                             .pNext = instancePNext,
-                                             .flags = 0,
-                                             .pApplicationInfo = &applicationInfo,
-                                             .enabledLayerCount = layerCount,
-                                             .ppEnabledLayerNames = &pLayer,
-                                             .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
-                                             .ppEnabledExtensionNames = extensions.data()};
+    vk::InstanceCreateInfo instanceCreateInfo({},
+                                              &applicationInfo,
+                                              layerCount,
+                                              &pLayer,
+                                              static_cast<uint32_t>(extensions.size()),
+                                              extensions.data(),
+                                              instancePNext);
 
     m_instance = vk::createInstance(instanceCreateInfo);
     DEBUG("Successfullly created instance\n");
@@ -299,30 +295,16 @@ void VulkanContext::createLogicalDevice()
                                      uniqueQueueFamiliesIndices.end());
 
     float queuePriority = 1.f;
-    std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+    std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
 
     for (uint32_t queueFamilyIndex : uniqueQueueFamiliesIndices) {
-        VkDeviceQueueCreateInfo queueCreateInfo {.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-                                                 .pNext = nullptr,
-                                                 .flags = 0,
-                                                 .queueFamilyIndex = queueFamilyIndex,
-                                                 .queueCount = 1,
-                                                 .pQueuePriorities = &queuePriority};
+        vk::DeviceQueueCreateInfo queueCreateInfo({}, queueFamilyIndex, 1, &queuePriority, nullptr);
         queueCreateInfos.push_back(queueCreateInfo);
     }
 
     std::vector<const char*> enabledExtensions {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
-    VkDeviceCreateInfo deviceCreateInfo {.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-                                         .pNext = nullptr,
-                                         .flags = 0,
-                                         .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
-                                         .pQueueCreateInfos = queueCreateInfos.data(),
-                                         .enabledLayerCount = 0,           // deprecated
-                                         .ppEnabledLayerNames = nullptr,   // deprecated
-                                         .enabledExtensionCount = static_cast<uint32_t>(enabledExtensions.size()),
-                                         .ppEnabledExtensionNames = enabledExtensions.data(),
-                                         .pEnabledFeatures = nullptr};
+    vk::DeviceCreateInfo deviceCreateInfo({}, queueCreateInfos, {}, enabledExtensions, {}, nullptr);
 
     m_device = m_physicalDevice.createDevice(deviceCreateInfo);
     DEBUG("Successfully created logical device\n");
@@ -428,6 +410,7 @@ void VulkanContext::createSwapchain(SDL_Window* window)
                                                    {});
 
     m_swapchain = m_device.createSwapchainKHR(swapchainCreateInfo);
+    DEBUG("Successfully created swapchain\n");
 }
 
 void VulkanContext::cleanup() noexcept
