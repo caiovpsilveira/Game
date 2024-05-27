@@ -365,25 +365,30 @@ void VulkanGraphicsContext::createAllocator()
 
 void VulkanGraphicsContext::createSwapchain(SDL_Window* window)
 {
+    // Select the default values for the present mode and SurfaceFormatKHR
     auto presentModes = m_physicalDevice.getSurfacePresentModesKHR(m_surface);
-    auto selectedPresentMode = std::ranges::find(presentModes, vk::PresentModeKHR::eMailbox) != presentModes.end()
-                                   ? vk::PresentModeKHR::eMailbox
-                                   : vk::PresentModeKHR::eFifo;
+    m_currentSwapchainPresentMode = std::ranges::find(presentModes, vk::PresentModeKHR::eMailbox) != presentModes.end()
+                                        ? vk::PresentModeKHR::eMailbox
+                                        : vk::PresentModeKHR::eFifo;
 
     auto surfaceFormats = m_physicalDevice.getSurfaceFormatsKHR(m_surface);
     // Vulkan.hpp provides trivial operator==
-    auto selectedSurfaceFormat =
+    m_currentSwapchainSurfaceFormat =
         std::ranges::find(surfaceFormats,
                           vk::SurfaceFormatKHR {vk::Format::eB8G8R8A8Srgb, vk::ColorSpaceKHR::eSrgbNonlinear}) !=
                 surfaceFormats.end()
             ? vk::SurfaceFormatKHR {vk::Format::eB8G8R8A8Srgb, vk::ColorSpaceKHR::eSrgbNonlinear}
             : surfaceFormats[0];
 
+    recreateSwapchain(window);
+}
+
+void VulkanGraphicsContext::recreateSwapchain(SDL_Window* window)
+{
     auto surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(m_surface);
-    vk::Extent2D swapchainExtent;
 
     if (surfaceCapabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
-        swapchainExtent = surfaceCapabilities.currentExtent;
+        m_currentSwapchainExtent = surfaceCapabilities.currentExtent;
     } else {
         int w, h;
         SDL_Vulkan_GetDrawableSize(window, &w, &h);
@@ -396,7 +401,7 @@ void VulkanGraphicsContext::createSwapchain(SDL_Window* window)
         actualExtent.height = std::clamp(actualExtent.height,
                                          surfaceCapabilities.minImageExtent.height,
                                          surfaceCapabilities.maxImageExtent.height);
-        swapchainExtent = actualExtent;
+        m_currentSwapchainExtent = actualExtent;
     }
 
     uint32_t imageCount = surfaceCapabilities.maxImageCount == 0   // unlimited
@@ -409,6 +414,7 @@ void VulkanGraphicsContext::createSwapchain(SDL_Window* window)
     uint32_t queueFamilyIndices[] = {m_queueFamiliesIndices.graphicsFamilyIndex,
                                      m_queueFamiliesIndices.presentFamilyIndex};
 
+    // TODO: these probably can be stored and be immutable, but is it worth it?
     if (m_queueFamiliesIndices.graphicsFamilyIndex != m_queueFamiliesIndices.presentFamilyIndex) {
         imageSharingMode = vk::SharingMode::eConcurrent;
         queueFamilyIndexCount = std::size(queueFamilyIndices);
@@ -419,14 +425,16 @@ void VulkanGraphicsContext::createSwapchain(SDL_Window* window)
         pQueueFamilyIndices = nullptr;
     }
 
+    // on the first call, this will create the swapchain, as m_swapchain is initialized as nullptr
+    // otherwise pass it as old swapchain
     vk::SwapchainCreateInfoKHR swapchainCreateInfo {.sType = vk::StructureType::eSwapchainCreateInfoKHR,
                                                     .pNext = nullptr,
                                                     .flags = {},
                                                     .surface = m_surface,
                                                     .minImageCount = imageCount,
-                                                    .imageFormat = selectedSurfaceFormat.format,
-                                                    .imageColorSpace = selectedSurfaceFormat.colorSpace,
-                                                    .imageExtent = swapchainExtent,
+                                                    .imageFormat = m_currentSwapchainSurfaceFormat.format,
+                                                    .imageColorSpace = m_currentSwapchainSurfaceFormat.colorSpace,
+                                                    .imageExtent = m_currentSwapchainExtent,
                                                     .imageArrayLayers = 1,
                                                     .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
                                                     .imageSharingMode = imageSharingMode,
@@ -434,12 +442,13 @@ void VulkanGraphicsContext::createSwapchain(SDL_Window* window)
                                                     .pQueueFamilyIndices = pQueueFamilyIndices,
                                                     .preTransform = surfaceCapabilities.currentTransform,
                                                     .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
-                                                    .presentMode = selectedPresentMode,
+                                                    .presentMode = m_currentSwapchainPresentMode,
                                                     .clipped = vk::True,
-                                                    .oldSwapchain = nullptr};
+                                                    .oldSwapchain = m_swapchain};
 
+    bool creating = m_swapchain == nullptr;
     m_swapchain = m_device.createSwapchainKHR(swapchainCreateInfo);
-    DEBUG("Successfully created swapchain\n");
+    DEBUG_FMT("Successfully {} swapchain\n", creating ? "created" : "re-created");
 }
 
 void VulkanGraphicsContext::cleanup() noexcept

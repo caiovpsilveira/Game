@@ -1,11 +1,11 @@
 #ifndef CORE_VULKAN_GRAPHICS_CONTEXT_H
 #define CORE_VULKAN_GRAPHICS_CONTEXT_H
 
-// std
-#include <span>
-
 // libs
 #include <vulkan/vulkan.hpp>
+
+// std
+#include <span>
 
 struct SDL_Window;
 struct VmaAllocator_T;
@@ -31,14 +31,15 @@ namespace core
  * queue.
  * - A VMA (Vulkan Memory Allocator) handle, for memory allocation management.
  *
- * For more details about a managed resource, check the documentation of the private methods "createInstanceAndDebug",
- * "searchPhysicalDevice", "createLogicalDevice", "createAllocator" and "createSwapchain".
+ * For more details about a managed resource, check the documentation of the private methods
+ * @ref createInstanceAndDebug, @ref searchPhysicalDevice, @ref createLogicalDevice, @ref createAllocator and
+ * @ref createSwapchain.
  */
 class VulkanGraphicsContext
 {
 public:
     /*!
-     * @brief Default constructor. Does not acquire any resource.
+     * Default constructor. Does not acquire any resource.
      */
     VulkanGraphicsContext() noexcept = default;
 
@@ -48,18 +49,18 @@ public:
      * @param requiredInstanceExtensions array-view of null-terminated UTF-8 strings containing the names of extensions
      * to enable for the created instance.
      * - This MUST include "VK_KHR_surface" and the specific platform surface extension, such as "VK_KHR_win32_surface"
-     * or "VK_KHR_xcb_surface".
+     *   or "VK_KHR_xcb_surface".
      *
      * @param enableValidationLayersIfSupported a flag to enable validation layers, if supported by the Vulkan instance.
      * - If this flag is true and the validation layers are not supported, the instance creation will proceed without
-     * requesting the validation layers.
+     *   requesting the validation layers.
      *
      * @param enableDebugMessengerIfSupported a flag to create a VkDebugUtilsMessengerEXT instance, if supported by the
      * Vulkan instance.
      * - If this flag is true and the debug utils messenger extension is not supported, the instance creation will
-     * proceed without requesting the extension.
+     *   proceed without requesting the extension.
      * - If "VK_EXT_debug_utils" is within "requiredInstanceExtensions", this flag will effectively have no effect, and
-     * the instance creation will fail if it does not support the Debug Utils Extension.
+     *   the instance creation will fail if it does not support the Debug Utils Extension.
      *
      * @param window A valid SDL_window, which MUST have been created with the "SDL_WINDOW_VULKAN" flag.
      *
@@ -69,6 +70,8 @@ public:
      * - the required extensions are not supported,
      * - no physical devices are suitable for the application needs,
      * - internal issues with the host/device Vulkan calls, such as being out of memory.
+     *
+     * If the creation fails, all acquired resources are released.
      */
     VulkanGraphicsContext(std::span<const char* const> requiredInstanceExtensions,
                           bool enableValidationLayersIfSupported,
@@ -83,6 +86,18 @@ public:
 
     ~VulkanGraphicsContext() noexcept;
 
+    /*!
+     * @brief Re-Creates the swapchain.
+     *
+     * Re-creates the swapchain, querying the current drawable extent from the window and with the set values for the
+     * swapchain present mode and surfaceFormatKHR.
+     *
+     * @param window the SDL_window bound to the VkSurface, to query for the drawable extent.
+     *
+     * @throws a vk::SystemError if the swapchain recreation failed.
+     */
+    void recreateSwapchain(SDL_Window* window);
+
 private:
     struct QueueFamiliesIndices {
         uint32_t graphicsFamilyIndex;
@@ -94,25 +109,25 @@ private:
      *
      * - This function initializes a Vulkan instance with specified parameters.
      * - If validation layers or debug messenger are requested but not supported, the function proceeds without them and
-     * logs a message indicating their absence.
+     *   logs a message indicating their absence.
      *
      * - This call loads the vkGetInstanceProcAddr ptr, and after creating the instance, if successfull, loads all other
-     * function pointers.
+     *   function pointers.
      *
      * @param requiredInstanceExtensions array-view of null-terminated UTF-8 strings containing the names of extensions
      * to enable for the created instance.
      * - This MUST include "VK_KHR_surface" and the specific platform surface extension, such as "VK_KHR_win32_surface"
-     * or "VK_KHR_xcb_surface".
+     *   or "VK_KHR_xcb_surface".
      * @param enableValidationLayersIfSupported Flag to enable validation layers, if supported.
      * @param enableDebugMessengerIfSupported Flag to enable debug messenger, if supported.
      * - If "VK_EXT_debug_utils" is within "requiredInstanceExtensions", this flag will effectively have no effect, and
-     * the instance creation will fail if it does not support the Debug Utils Extension.
+     *   the instance creation will fail if it does not support the Debug Utils Extension.
      * - The Debug Callback is set with severity flags {Verbose, Info, Warning, Error}, and with Message type flags
-     * {General, Validation, Performance}.
+     *   {General, Validation, Performance}.
      * - The Debug Callback calls the core::Logger implementation, to log verbose with level TRACE, info with level
-     * INFO, warning with level WARN and error with level ERROR.
+     *   INFO, warning with level WARN and error with level ERROR.
      * - If this flag is true, the instance creation and destruction events will also be captured by linking the
-     * VkDebugUtilsMessengerCreateInfoEXT in the pNext.
+     *   VkDebugUtilsMessengerCreateInfoEXT in the pNext.
      *
      * @throws a vk::SystemError if instance or debug creation fails.
      */
@@ -121,7 +136,9 @@ private:
                                 bool enableDebugMessengerIfSupported);
 
     /*!
-     * @brief Searches for the first physical device that:
+     * @brief Searches for a physical device that suits the application needs.
+     *
+     * Searches for the first physical device that:
      * - has a graphics queue family,
      * - has a queue family that supports presenting to the VkSurface,
      * - supports the VK_KHR_swapchain extension.
@@ -131,8 +148,10 @@ private:
     void searchPhysicalDevice();
 
     /*!
-     * @brief Creates the VkDevice handle for the logical device, requesting a single queue from the graphics queue
-     * family and a single queue from the present queue family, and enables the  VK_KHR_swapchain extension.
+     * @brief Creates the VkDevice handle for the logical device.
+     *
+     * Requests a single queue from the graphics queue amily and a single queue from the present queue family,
+     * and enables the  VK_KHR_swapchain extension.
      *
      * After this call, if successfull, the device-specific function entrypoints are loaded.
      *
@@ -144,7 +163,7 @@ private:
     void createLogicalDevice();
 
     /*!
-     * @brief Creates a VMA allocator instance.
+     * Creates a VMA allocator instance.
      *
      * @throws a vk::SystemError if the allocator creation failed.
      */
@@ -153,13 +172,13 @@ private:
     /*!
      * @brief Creates a VkSwapchainKHR to present to the window surface.
      *
-     * If supported, the present mode is set to Mailbox. If not, it defaults to FIFO.
+     * The default values set for the present mode and surfaceFormatKHR are:
+     * - If supported, the present mode is set to Mailbox. Otherwise, it defaults to FIFO.
+     * - If supported, the vKsurfaceFormatKHR is set to {.format = eB8G8R8A8Srgb, .colorSpace = eSrgbNonlinear}.
+     *   Otherwise it defaults to the first VkSurfaceFormatKHR enumerated by the physical device.
      *
-     * If both are supported, the image format is set to eB8G8R8A8Srgb and the color space to eSrgbNonlinear. If one is
-     * not supported, it defaults to the first VkSurfaceFormatKHR enumerated by the device.
-     *
-     * If the device graphics queue family is the same as the present queue family, the sharing image mode is set to
-     * Exclusive, otherwise to concurrent.
+     * If the device graphics queue family is the same as the present queue family,
+     * the image sharing mode is set to eExclusive, otherwise to eConcurrent.
      *
      * @param window the SDL_window bound to the VkSurface, to query for the drawable extent.
      *
@@ -167,6 +186,9 @@ private:
      */
     void createSwapchain(SDL_Window* window);
 
+    /*!
+     * Frees the acquired resources.
+     */
     void cleanup() noexcept;
 
 private:
@@ -184,6 +206,9 @@ private:
     vk::Queue m_graphicsQueue = nullptr;
     vk::Queue m_presentQueue = nullptr;
     VmaAllocator_T* m_allocator = nullptr;
+    vk::PresentModeKHR m_currentSwapchainPresentMode;
+    vk::SurfaceFormatKHR m_currentSwapchainSurfaceFormat;
+    vk::Extent2D m_currentSwapchainExtent;
     vk::SwapchainKHR m_swapchain = nullptr;
 };
 
