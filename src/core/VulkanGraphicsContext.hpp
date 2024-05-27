@@ -89,8 +89,8 @@ public:
     /*!
      * @brief Re-Creates the swapchain.
      *
-     * Re-creates the swapchain, querying the current drawable extent from the window and with the set values for the
-     * swapchain present mode and surfaceFormatKHR.
+     * Re-creates the swapchain, querying the current drawable extent from the window and using the
+     * set values for the swapchain present mode and surfaceFormatKHR.
      *
      * @param window the SDL_window bound to the VkSurface, to query for the drawable extent.
      *

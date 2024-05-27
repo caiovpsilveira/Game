@@ -142,6 +142,9 @@ VulkanGraphicsContext::VulkanGraphicsContext(VulkanGraphicsContext&& rhs) noexce
     , m_graphicsQueue(std::exchange(rhs.m_graphicsQueue, nullptr))
     , m_presentQueue(std::exchange(rhs.m_presentQueue, nullptr))
     , m_allocator(std::exchange(rhs.m_allocator, nullptr))
+    , m_currentSwapchainPresentMode(rhs.m_currentSwapchainPresentMode)
+    , m_currentSwapchainSurfaceFormat(rhs.m_currentSwapchainSurfaceFormat)
+    , m_currentSwapchainExtent(rhs.m_currentSwapchainExtent)
     , m_swapchain(std::exchange(rhs.m_swapchain, nullptr))
 {}
 
@@ -157,6 +160,9 @@ VulkanGraphicsContext& VulkanGraphicsContext::operator=(VulkanGraphicsContext&& 
         std::swap(m_graphicsQueue, rhs.m_graphicsQueue);
         std::swap(m_presentQueue, rhs.m_presentQueue);
         std::swap(m_allocator, rhs.m_allocator);
+        m_currentSwapchainPresentMode = rhs.m_currentSwapchainPresentMode;
+        m_currentSwapchainSurfaceFormat = rhs.m_currentSwapchainSurfaceFormat;
+        m_currentSwapchainExtent = rhs.m_currentSwapchainExtent;
         std::swap(m_swapchain, rhs.m_swapchain);
     }
     return *this;
