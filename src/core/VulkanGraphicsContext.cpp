@@ -22,6 +22,7 @@
 #include <cstring>
 #include <limits>
 #include <optional>
+#include <span>
 #include <utility>
 #include <vector>
 
@@ -73,7 +74,8 @@ bool isValidationLayerSupported()
     return supportsValidationLayers;
 }
 
-bool isExtensionSupported(std::span<vk::ExtensionProperties> availableExtensions, const char* extensionName) noexcept
+bool isExtensionSupported(std::span<const vk::ExtensionProperties> availableExtensions,
+                          const char* extensionName) noexcept
 {
     auto match = [extensionName](const vk::ExtensionProperties& p) {
         return std::strcmp(p.extensionName, extensionName) == 0;
@@ -85,7 +87,7 @@ bool isExtensionSupported(std::span<vk::ExtensionProperties> availableExtensions
 
 }   // namespace
 
-VulkanGraphicsContext::VulkanGraphicsContext(std::span<const char*> requiredInstanceExtensions,
+VulkanGraphicsContext::VulkanGraphicsContext(std::span<const char* const> requiredInstanceExtensions,
                                              bool enableValidationLayersIfSupported,
                                              bool enableDebugMessengerIfSupported,
                                              SDL_Window* window)
@@ -161,7 +163,7 @@ VulkanGraphicsContext::~VulkanGraphicsContext() noexcept
     cleanup();
 }
 
-void VulkanGraphicsContext::createInstanceAndDebug(std::span<const char*> requiredInstanceExtensions,
+void VulkanGraphicsContext::createInstanceAndDebug(std::span<const char* const> requiredInstanceExtensions,
                                                    bool enableValidationLayersIfSupported,
                                                    bool enableDebugMessengerIfSupported)
 {

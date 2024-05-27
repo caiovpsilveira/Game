@@ -66,12 +66,11 @@ public:
      * @throws a vk::SystemError containing the error information.
      * This can be because:
      * - Vulkan is not supported by the machine,
-     * - the provided window is invalid for Vulkan,
      * - the required extensions are not supported,
      * - no physical devices are suitable for the application needs,
      * - internal issues with the host/device Vulkan calls, such as being out of memory.
      */
-    VulkanGraphicsContext(std::span<const char*> requiredInstanceExtensions,
+    VulkanGraphicsContext(std::span<const char* const> requiredInstanceExtensions,
                           bool enableValidationLayersIfSupported,
                           bool enableDebugMessengerIfSupported,
                           SDL_Window* window);
@@ -117,7 +116,7 @@ private:
      *
      * @throws a vk::SystemError if instance or debug creation fails.
      */
-    void createInstanceAndDebug(std::span<const char*> requiredInstanceExtensions,
+    void createInstanceAndDebug(std::span<const char* const> requiredInstanceExtensions,
                                 bool enableValidationLayersIfSupported,
                                 bool enableDebugMessengerIfSupported);
 
