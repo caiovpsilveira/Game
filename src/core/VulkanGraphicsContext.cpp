@@ -95,7 +95,9 @@ VulkanGraphicsContext::VulkanGraphicsContext(uint32_t vulkanApiVersion,
                                              std::span<const char* const> requiredInstanceExtensions,
                                              bool enableValidationLayersIfSupported,
                                              bool enableDebugMessengerIfSupported,
-                                             SDL_Window* window)
+                                             SDL_Window* window,
+                                             PFN_presentModeKHRselector pfnPresentModeKHRselector,
+                                             PFN_surfaceFormatKHRselector pfnSurfaceFormatKHRselector)
 {
     try {
         createInstanceAndDebug(vulkanApiVersion,
@@ -116,7 +118,7 @@ VulkanGraphicsContext::VulkanGraphicsContext(uint32_t vulkanApiVersion,
 
         createAllocator();
 
-        createSwapchain(window);
+        createSwapchain(window, pfnPresentModeKHRselector, pfnSurfaceFormatKHRselector);
 
         assert(m_instance);
         // assert(m_debugMessenger); // Allowed, can be nullptr if debug is disabled / not supported
@@ -370,22 +372,21 @@ void VulkanGraphicsContext::createAllocator()
     DEBUG("Successfully created vmaAllocator\n");
 }
 
-void VulkanGraphicsContext::createSwapchain(SDL_Window* window)
+void VulkanGraphicsContext::createSwapchain(SDL_Window* window,
+                                            PFN_presentModeKHRselector pfnPresentModeKHRselector,
+                                            PFN_surfaceFormatKHRselector pfnSurfaceFormatKHRselector)
 {
     // Select the default values for the present mode and SurfaceFormatKHR
-    auto presentModes = m_physicalDevice.getSurfacePresentModesKHR(m_surface);
-    m_currentSwapchainPresentMode = std::ranges::find(presentModes, vk::PresentModeKHR::eMailbox) != presentModes.end()
-                                        ? vk::PresentModeKHR::eMailbox
-                                        : vk::PresentModeKHR::eFifo;
+    if (pfnPresentModeKHRselector != nullptr) {
+        auto presentModes = m_physicalDevice.getSurfacePresentModesKHR(m_surface);
+        m_currentSwapchainPresentMode = pfnPresentModeKHRselector(presentModes);
+    } else {
+        m_currentSwapchainPresentMode = vk::PresentModeKHR::eFifo;
+    }
 
     auto surfaceFormats = m_physicalDevice.getSurfaceFormatsKHR(m_surface);
-    // Vulkan.hpp provides trivial operator==
     m_currentSwapchainSurfaceFormat =
-        std::ranges::find(surfaceFormats,
-                          vk::SurfaceFormatKHR {vk::Format::eB8G8R8A8Srgb, vk::ColorSpaceKHR::eSrgbNonlinear}) !=
-                surfaceFormats.end()
-            ? vk::SurfaceFormatKHR {vk::Format::eB8G8R8A8Srgb, vk::ColorSpaceKHR::eSrgbNonlinear}
-            : surfaceFormats[0];
+        pfnSurfaceFormatKHRselector ? pfnSurfaceFormatKHRselector(surfaceFormats) : surfaceFormats[0];
 
     recreateSwapchain(window);
 }

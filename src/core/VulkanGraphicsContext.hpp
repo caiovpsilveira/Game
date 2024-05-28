@@ -13,6 +13,9 @@ struct VmaAllocator_T;
 namespace core
 {
 
+using PFN_presentModeKHRselector = vk::PresentModeKHR (*)(std::span<const vk::PresentModeKHR>);
+using PFN_surfaceFormatKHRselector = vk::SurfaceFormatKHR (*)(std::span<const vk::SurfaceFormatKHR>);
+
 /*!
  * @brief RAII Class that manages common resources in a Vulkan Graphics application.
  *
@@ -72,6 +75,15 @@ public:
      *
      * @param window A valid SDL_window, which MUST have been created with the "SDL_WINDOW_VULKAN" flag.
      *
+     * @param pfnPresentModeKHRselector nullptr, or a pointer to a function that will choose the preferred present mode,
+     * passing the supported present modes as a parameter.
+     * - If this is nullptr, the used present mode will be FIFO, as it's guaranteed to be supported.
+     *
+     * @param pfnSurfaceFormatKHRselector nullptr, or a pointer to a function that will choose the preferred surface
+     * format, passing the supported surface formats as a parameter.
+     * - If this is nullptr, the used surface format used will be the first enumerated by the physical device,
+     *   as it's guaranteed that the physical device will suport at least one surface format.
+     *
      * @throws a vk::SystemError containing the error information.
      * This can be because:
      * - Vulkan is not supported by the machine,
@@ -85,7 +97,9 @@ public:
                           std::span<const char* const> requiredInstanceExtensions,
                           bool enableValidationLayersIfSupported,
                           bool enableDebugMessengerIfSupported,
-                          SDL_Window* window);
+                          SDL_Window* window,
+                          PFN_presentModeKHRselector pfnPresentModeKHRselector,
+                          PFN_surfaceFormatKHRselector pfnSurfaceFormatKHRselector);
 
     VulkanGraphicsContext(const VulkanGraphicsContext&) = delete;
     VulkanGraphicsContext& operator=(const VulkanGraphicsContext&) = delete;
@@ -209,19 +223,25 @@ private:
     /*!
      * @brief Creates a VkSwapchainKHR to present to the window surface.
      *
-     * The default values set for the present mode and surfaceFormatKHR are:
-     * - If supported, the present mode is set to Mailbox. Otherwise, it defaults to FIFO.
-     * - If supported, the vKsurfaceFormatKHR is set to {.format = eB8G8R8A8Srgb, .colorSpace = eSrgbNonlinear}.
-     *   Otherwise it defaults to the first VkSurfaceFormatKHR enumerated by the physical device.
-     *
      * If the device graphics queue family is the same as the present queue family,
      * the image sharing mode is set to eExclusive, otherwise to eConcurrent.
      *
      * @param window the SDL_window bound to the VkSurface, to query for the drawable extent.
      *
+     * @param pfnPresentModeKHRselector nullptr, or a pointer to a function that will choose the preferred present mode,
+     * passing the supported present modes as a parameter.
+     * - If this is nullptr, the used present mode will be FIFO, as it's guaranteed to be supported.
+     *
+     * @param pfnSurfaceFormatKHRselector nullptr, or a pointer to a function that will choose the preferred surface
+     * format, passing the supported surface formats as a parameter.
+     * - If this is nullptr, the used surface format used will be the first enumerated by the physical device,
+     *   as it's guaranteed that the physical device will suport at least one surface format.
+     *
      * @throws a vk::SystemError if the swapchain creation failed.
      */
-    void createSwapchain(SDL_Window* window);
+    void createSwapchain(SDL_Window* window,
+                         PFN_presentModeKHRselector pfnPresentModeKHRselector,
+                         PFN_surfaceFormatKHRselector pfnSurfaceFormatKHRselector);
 
     /*!
      * Frees the acquired resources.

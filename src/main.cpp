@@ -36,7 +36,8 @@ int main()
     SDL_Vulkan_GetInstanceExtensions(window, &count, ext.data());
 
     try {
-        auto vkContext = core::VulkanGraphicsContext(vk::makeApiVersion(0, 1, 3, 0), ext, true, true, window);
+        auto vkContext =
+            core::VulkanGraphicsContext(vk::makeApiVersion(0, 1, 3, 0), ext, true, true, window, nullptr, nullptr);
     } catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
     }
