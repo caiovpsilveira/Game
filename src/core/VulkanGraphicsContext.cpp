@@ -99,6 +99,9 @@ VulkanGraphicsContext::VulkanGraphicsContext(uint32_t vulkanApiVersion,
                                              PFN_presentModeKHRselector pfnPresentModeKHRselector,
                                              PFN_surfaceFormatKHRselector pfnSurfaceFormatKHRselector)
 {
+    assert(vulkanApiVersion == 0 || vulkanApiVersion > vk::ApiVersion10);
+    assert(window);
+
     try {
         createInstanceAndDebug(vulkanApiVersion,
                                requiredInstanceExtensions,
@@ -363,12 +366,8 @@ void VulkanGraphicsContext::createAllocator()
     allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
     allocatorCreateInfo.instance = m_instance, allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_3;
 
-    VkResult res = vmaCreateAllocator(&allocatorCreateInfo, &m_allocator);
-    if (res != VK_SUCCESS) {
-        // To be consistent with vulkan.hpp, throw a vk::SystemError
-        throw vk::UnknownError(std::string("VulkanMemoryAllocator initialization failed with code ") +
-                               std::to_string(res));
-    }
+    vk::Result result = static_cast<vk::Result>(vmaCreateAllocator(&allocatorCreateInfo, &m_allocator));
+    vk::detail::resultCheck(result, "vmaCreateAllocator");
     DEBUG("Successfully created vmaAllocator\n");
 }
 
