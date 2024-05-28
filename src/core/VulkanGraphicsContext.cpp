@@ -91,13 +91,15 @@ bool isExtensionSupported(std::span<const vk::ExtensionProperties> availableExte
 
 }   // namespace
 
-VulkanGraphicsContext::VulkanGraphicsContext(std::span<const char* const> requiredInstanceExtensions,
+VulkanGraphicsContext::VulkanGraphicsContext(uint32_t vulkanApiVersion,
+                                             std::span<const char* const> requiredInstanceExtensions,
                                              bool enableValidationLayersIfSupported,
                                              bool enableDebugMessengerIfSupported,
                                              SDL_Window* window)
 {
     try {
-        createInstanceAndDebug(requiredInstanceExtensions,
+        createInstanceAndDebug(vulkanApiVersion,
+                               requiredInstanceExtensions,
                                enableValidationLayersIfSupported,
                                enableDebugMessengerIfSupported);
 
@@ -173,7 +175,8 @@ VulkanGraphicsContext::~VulkanGraphicsContext() noexcept
     cleanup();
 }
 
-void VulkanGraphicsContext::createInstanceAndDebug(std::span<const char* const> requiredInstanceExtensions,
+void VulkanGraphicsContext::createInstanceAndDebug(uint32_t vulkanApiVersion,
+                                                   std::span<const char* const> requiredInstanceExtensions,
                                                    bool enableValidationLayersIfSupported,
                                                    bool enableDebugMessengerIfSupported)
 {
@@ -181,11 +184,11 @@ void VulkanGraphicsContext::createInstanceAndDebug(std::span<const char* const> 
 
     vk::ApplicationInfo applicationInfo {.sType = vk::StructureType::eApplicationInfo,
                                          .pNext = nullptr,
-                                         .pApplicationName = "Voxel game",
+                                         .pApplicationName = nullptr,
                                          .applicationVersion = vk::makeApiVersion(0, 0, 1, 0),
-                                         .pEngineName = "No engine",
-                                         .engineVersion = vk::ApiVersion10,
-                                         .apiVersion = vk::ApiVersion13};
+                                         .pEngineName = nullptr,
+                                         .engineVersion = 0,
+                                         .apiVersion = vulkanApiVersion};
 
     bool useValidationLayers = enableValidationLayersIfSupported && isValidationLayerSupported();
     if (enableValidationLayersIfSupported && !useValidationLayers) {

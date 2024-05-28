@@ -46,6 +46,14 @@ public:
     /*!
      * @brief Constructor that acquires the resources.
      *
+     * @param vulkanApiVersion 0 or the highest version of Vulkan that the application is designed to use.
+     * - This MUST be encoded with the vulkan version numbers, which can be achieved
+     *   by using vk::makeApiVersion(v, M, m, p).
+     * - The Khronos validation layers will treat apiVersion as the highest API version of the application targets,
+     *   and will validate API usage against the minimum of that version and the implementation version.
+     * - If vulkanApiVersion is not 0, then it MUST be greater than or equal to VK_API_VERSION_1_0.
+     * - The variant version of the instance MUST match that requested in vulkanApiVersion.
+     *
      * @param requiredInstanceExtensions array-view of null-terminated UTF-8 strings containing the names of extensions
      * to enable for the created instance.
      * - This MUST include "VK_KHR_surface" and the specific platform surface extension, such as "VK_KHR_win32_surface"
@@ -60,7 +68,7 @@ public:
      * - If this flag is true and the debug utils messenger extension is not supported, the instance creation will
      *   proceed without requesting the extension.
      * - If "VK_EXT_debug_utils" is within "requiredInstanceExtensions", this flag will effectively have no effect, and
-     *   the instance creation will fail if it does not support the Debug Utils Extension.
+     *   the instance creation will fail if it does not support the Debug Utils Messenger extension.
      *
      * @param window A valid SDL_window, which MUST have been created with the "SDL_WINDOW_VULKAN" flag.
      *
@@ -73,7 +81,8 @@ public:
      *
      * If the creation fails, all acquired resources are released.
      */
-    VulkanGraphicsContext(std::span<const char* const> requiredInstanceExtensions,
+    VulkanGraphicsContext(uint32_t vulkanApiVersion,
+                          std::span<const char* const> requiredInstanceExtensions,
                           bool enableValidationLayersIfSupported,
                           bool enableDebugMessengerIfSupported,
                           SDL_Window* window);
@@ -107,21 +116,30 @@ private:
     /*!
      * @brief Creates a Vulkan instance and optionally sets up a debug messenger.
      *
-     * - This function initializes a Vulkan instance with specified parameters.
-     * - If validation layers or debug messenger are requested but not supported, the function proceeds without them and
-     *   logs a message indicating their absence.
+     * This function initializes a Vulkan instance with specified parameters,
+     * and optionaly creates a debug utils messenger ext instance.
      *
-     * - This call loads the vkGetInstanceProcAddr ptr, and after creating the instance, if successfull, loads all other
-     *   function pointers.
+     * This call loads the vkGetInstanceProcAddr ptr, and after creating the instance, if successfull, loads all other
+     * function pointers.
+     *
+     * @param vulkanApiVersion 0 or the highest version of Vulkan that the application is designed to use.
+     * - This MUST be encoded with the vulkan version numbers, which can be achieved
+     *   by using vk::makeApiVersion(v, M, m, p).
+     * - The Khronos validation layers will treat apiVersion as the highest API version of the application targets,
+     *   and will validate API usage against the minimum of that version and the implementation version.
+     * - If vulkanApiVersion is not 0, then it MUST be greater than or equal to VK_API_VERSION_1_0.
+     * - The variant version of the instance MUST match that requested in vulkanApiVersion.
      *
      * @param requiredInstanceExtensions array-view of null-terminated UTF-8 strings containing the names of extensions
      * to enable for the created instance.
      * - This MUST include "VK_KHR_surface" and the specific platform surface extension, such as "VK_KHR_win32_surface"
      *   or "VK_KHR_xcb_surface".
+     *
      * @param enableValidationLayersIfSupported Flag to enable validation layers, if supported.
+     *
      * @param enableDebugMessengerIfSupported Flag to enable debug messenger, if supported.
      * - If "VK_EXT_debug_utils" is within "requiredInstanceExtensions", this flag will effectively have no effect, and
-     *   the instance creation will fail if it does not support the Debug Utils Extension.
+     *   the instance creation will fail if it does not support the Debug Utils Messenger extension.
      * - The Debug Callback is set with severity flags {Verbose, Info, Warning, Error}, and with Message type flags
      *   {General, Validation, Performance}.
      * - The Debug Callback calls the core::Logger implementation, to log verbose with level TRACE, info with level
@@ -131,7 +149,8 @@ private:
      *
      * @throws a vk::SystemError if instance or debug creation fails.
      */
-    void createInstanceAndDebug(std::span<const char* const> requiredInstanceExtensions,
+    void createInstanceAndDebug(uint32_t vulkanApiVersion,
+                                std::span<const char* const> requiredInstanceExtensions,
                                 bool enableValidationLayersIfSupported,
                                 bool enableDebugMessengerIfSupported);
 
