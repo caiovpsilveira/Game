@@ -20,7 +20,7 @@ namespace core
  * Vulkan.hpp. It ensures that all required entrypoints, including device-specific extensions, are available for Vulkan
  * function calls.
  *
- * Note that you MUST use the vulkan.hpp default dispatcher function ptrs to have access to those entrypoints.
+ * NOTE: you MUST use the vulkan.hpp default dispatcher function ptrs to have access to those entrypoints.
  * By default, all vulkan.hpp functions uses the default dispatcher.
  *
  * Managed Resources:
@@ -94,6 +94,24 @@ public:
     VulkanGraphicsContext& operator=(VulkanGraphicsContext&&) noexcept;
 
     ~VulkanGraphicsContext() noexcept;
+
+    /*!
+     * Sets the present mode to be used in the next @ref recreateSwapchain call.
+     * NOTE: if the present mode is not supported, @ref recreateSwapchain will fail.
+     */
+    void setSwapchainPresentMode(const vk::PresentModeKHR& presentModeKHR) noexcept
+    {
+        m_currentSwapchainPresentMode = presentModeKHR;
+    }
+
+    /*!
+     * Sets the surface format to be used in the next @ref recreateSwapchain call.
+     * NOTE: if the surface format is not supported, @ref recreateSwapchain will fail.
+     */
+    void setSwapchainSurfaceFormatKHR(const vk::SurfaceFormatKHR& surfaceFormatKHR) noexcept
+    {
+        m_currentSwapchainSurfaceFormat = surfaceFormatKHR;
+    }
 
     /*!
      * @brief Re-Creates the swapchain.
@@ -174,7 +192,7 @@ private:
      *
      * After this call, if successfull, the device-specific function entrypoints are loaded.
      *
-     * Note: A queue family can support both the graphics queue and the present queue. In this case, only one queue will
+     * NOTE: A queue family can support both the graphics queue and the present queue. In this case, only one queue will
      * be created from this family, which will be used for both purposes.
      *
      * @throws a vk::SystemError if the device creation failed.
@@ -227,7 +245,6 @@ private:
     VmaAllocator_T* m_allocator = nullptr;
     vk::PresentModeKHR m_currentSwapchainPresentMode;
     vk::SurfaceFormatKHR m_currentSwapchainSurfaceFormat;
-    vk::Extent2D m_currentSwapchainExtent;
     vk::SwapchainKHR m_swapchain = nullptr;
 };
 

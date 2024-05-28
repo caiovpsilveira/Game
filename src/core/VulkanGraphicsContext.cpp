@@ -146,7 +146,6 @@ VulkanGraphicsContext::VulkanGraphicsContext(VulkanGraphicsContext&& rhs) noexce
     , m_allocator(std::exchange(rhs.m_allocator, nullptr))
     , m_currentSwapchainPresentMode(rhs.m_currentSwapchainPresentMode)
     , m_currentSwapchainSurfaceFormat(rhs.m_currentSwapchainSurfaceFormat)
-    , m_currentSwapchainExtent(rhs.m_currentSwapchainExtent)
     , m_swapchain(std::exchange(rhs.m_swapchain, nullptr))
 {}
 
@@ -164,7 +163,6 @@ VulkanGraphicsContext& VulkanGraphicsContext::operator=(VulkanGraphicsContext&& 
         std::swap(m_allocator, rhs.m_allocator);
         m_currentSwapchainPresentMode = rhs.m_currentSwapchainPresentMode;
         m_currentSwapchainSurfaceFormat = rhs.m_currentSwapchainSurfaceFormat;
-        m_currentSwapchainExtent = rhs.m_currentSwapchainExtent;
         std::swap(m_swapchain, rhs.m_swapchain);
     }
     return *this;
@@ -396,8 +394,9 @@ void VulkanGraphicsContext::recreateSwapchain(SDL_Window* window)
 {
     auto surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(m_surface);
 
+    vk::Extent2D swapchainExtent;
     if (surfaceCapabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
-        m_currentSwapchainExtent = surfaceCapabilities.currentExtent;
+        swapchainExtent = surfaceCapabilities.currentExtent;
     } else {
         int w, h;
         SDL_Vulkan_GetDrawableSize(window, &w, &h);
@@ -410,7 +409,7 @@ void VulkanGraphicsContext::recreateSwapchain(SDL_Window* window)
         actualExtent.height = std::clamp(actualExtent.height,
                                          surfaceCapabilities.minImageExtent.height,
                                          surfaceCapabilities.maxImageExtent.height);
-        m_currentSwapchainExtent = actualExtent;
+        swapchainExtent = actualExtent;
     }
 
     uint32_t imageCount = surfaceCapabilities.maxImageCount == 0   // unlimited
@@ -443,7 +442,7 @@ void VulkanGraphicsContext::recreateSwapchain(SDL_Window* window)
                                                     .minImageCount = imageCount,
                                                     .imageFormat = m_currentSwapchainSurfaceFormat.format,
                                                     .imageColorSpace = m_currentSwapchainSurfaceFormat.colorSpace,
-                                                    .imageExtent = m_currentSwapchainExtent,
+                                                    .imageExtent = swapchainExtent,
                                                     .imageArrayLayers = 1,
                                                     .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
                                                     .imageSharingMode = imageSharingMode,
