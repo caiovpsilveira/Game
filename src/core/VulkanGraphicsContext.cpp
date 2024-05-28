@@ -435,6 +435,7 @@ void VulkanGraphicsContext::recreateSwapchain(SDL_Window* window)
 
     // on the first call, this will create the swapchain, as m_swapchain is initialized as nullptr
     // otherwise pass it as old swapchain
+    vk::SwapchainKHR oldSwapchain = m_swapchain;
     vk::SwapchainCreateInfoKHR swapchainCreateInfo {.sType = vk::StructureType::eSwapchainCreateInfoKHR,
                                                     .pNext = nullptr,
                                                     .flags = {},
@@ -452,11 +453,17 @@ void VulkanGraphicsContext::recreateSwapchain(SDL_Window* window)
                                                     .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
                                                     .presentMode = m_currentSwapchainPresentMode,
                                                     .clipped = vk::True,
-                                                    .oldSwapchain = m_swapchain};
+                                                    .oldSwapchain = oldSwapchain};
 
-    bool creating = m_swapchain == nullptr;
     m_swapchain = m_device.createSwapchainKHR(swapchainCreateInfo);
-    DEBUG_FMT("Successfully {} swapchain\n", creating ? "created" : "re-created");
+    DEBUG_FMT("Successfully {} swapchain\n", oldSwapchain == nullptr ? "created" : "re-created");
+    if (oldSwapchain != nullptr) {
+        // We could keep the retired old swapchain to try to present already retrieved images, but is this worth it?
+        // in which scenarios would need a Swapchain recreation AND have the oldSwapchain NOT entered a state that
+        // causes VK_ERROR_OUT_OF_DATE_KHR to be returned?
+        // furthermore, does applications frequently acquire more than 1 image before presenting it?
+        m_device.destroySwapchainKHR(oldSwapchain);
+    }
 }
 
 void VulkanGraphicsContext::cleanup() noexcept

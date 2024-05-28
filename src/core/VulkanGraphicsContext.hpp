@@ -99,7 +99,7 @@ public:
      * Sets the present mode to be used in the next @ref recreateSwapchain call.
      * NOTE: if the present mode is not supported, @ref recreateSwapchain will fail.
      */
-    void setSwapchainPresentMode(const vk::PresentModeKHR& presentModeKHR) noexcept
+    void setSwapchainPresentMode(vk::PresentModeKHR presentModeKHR) noexcept
     {
         m_currentSwapchainPresentMode = presentModeKHR;
     }
@@ -108,7 +108,7 @@ public:
      * Sets the surface format to be used in the next @ref recreateSwapchain call.
      * NOTE: if the surface format is not supported, @ref recreateSwapchain will fail.
      */
-    void setSwapchainSurfaceFormatKHR(const vk::SurfaceFormatKHR& surfaceFormatKHR) noexcept
+    void setSwapchainSurfaceFormatKHR(vk::SurfaceFormatKHR surfaceFormatKHR) noexcept
     {
         m_currentSwapchainSurfaceFormat = surfaceFormatKHR;
     }
