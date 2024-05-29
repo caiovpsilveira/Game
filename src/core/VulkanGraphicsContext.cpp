@@ -342,10 +342,33 @@ void VulkanGraphicsContext::createLogicalDevice()
 void VulkanGraphicsContext::createAllocator()
 {
     const auto& d = VULKAN_HPP_DEFAULT_DISPATCHER;
-    VmaVulkanFunctions vulkanFunctions {};
-    vulkanFunctions.vkGetInstanceProcAddr = d.vkGetInstanceProcAddr;
-    vulkanFunctions.vkGetDeviceProcAddr = d.vkGetDeviceProcAddr;
-
+    VmaVulkanFunctions vulkanFunctions {.vkGetInstanceProcAddr = d.vkGetInstanceProcAddr,
+                                        .vkGetDeviceProcAddr = d.vkGetDeviceProcAddr,
+                                        .vkGetPhysicalDeviceProperties = d.vkGetPhysicalDeviceProperties,
+                                        .vkGetPhysicalDeviceMemoryProperties = d.vkGetPhysicalDeviceMemoryProperties,
+                                        .vkAllocateMemory = d.vkAllocateMemory,
+                                        .vkFreeMemory = d.vkFreeMemory,
+                                        .vkMapMemory = d.vkMapMemory,
+                                        .vkUnmapMemory = d.vkUnmapMemory,
+                                        .vkFlushMappedMemoryRanges = d.vkFlushMappedMemoryRanges,
+                                        .vkInvalidateMappedMemoryRanges = d.vkInvalidateMappedMemoryRanges,
+                                        .vkBindBufferMemory = d.vkBindBufferMemory,
+                                        .vkBindImageMemory = d.vkBindImageMemory,
+                                        .vkGetBufferMemoryRequirements = d.vkGetBufferMemoryRequirements,
+                                        .vkGetImageMemoryRequirements = d.vkGetImageMemoryRequirements,
+                                        .vkCreateBuffer = d.vkCreateBuffer,
+                                        .vkDestroyBuffer = d.vkDestroyBuffer,
+                                        .vkCreateImage = d.vkCreateImage,
+                                        .vkDestroyImage = d.vkDestroyImage,
+                                        .vkCmdCopyBuffer = d.vkCmdCopyBuffer,
+                                        .vkGetBufferMemoryRequirements2KHR = d.vkGetBufferMemoryRequirements2,
+                                        .vkGetImageMemoryRequirements2KHR = d.vkGetImageMemoryRequirements2,
+                                        .vkBindBufferMemory2KHR = d.vkBindBufferMemory2,
+                                        .vkBindImageMemory2KHR = d.vkBindImageMemory2,
+                                        .vkGetPhysicalDeviceMemoryProperties2KHR =
+                                            d.vkGetPhysicalDeviceMemoryProperties2,
+                                        .vkGetDeviceBufferMemoryRequirements = d.vkGetDeviceBufferMemoryRequirements,
+                                        .vkGetDeviceImageMemoryRequirements = d.vkGetDeviceImageMemoryRequirements};
     VmaAllocatorCreateInfo allocatorCreateInfo {};
     allocatorCreateInfo.physicalDevice = m_physicalDevice, allocatorCreateInfo.device = m_device,
     allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
