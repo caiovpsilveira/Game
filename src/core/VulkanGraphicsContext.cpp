@@ -1,17 +1,12 @@
-// Dynamic loader/dispatcher settings for vulkan.hpp and VMA
-#define VK_NO_PROTOTYPES
-
 #define VULKAN_HPP_NO_SMART_HANDLE
 #define VULKAN_HPP_NO_CONSTRUCTORS
 
-#define VMA_STATIC_VULKAN_FUNCTIONS 0
-// CHECKME why? Vulkan HPP default dispatcher should be able to load all extensions?
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
 #define VMA_IMPLEMENTATION
 
 #include "VulkanGraphicsContext.hpp"
 
 #include "Logger.hpp"
+#include "Utils.hpp"
 
 // libs
 #include <SDL.h>
@@ -76,17 +71,6 @@ bool isValidationLayerSupported()
         supportsValidationLayers = true;
     }
     return supportsValidationLayers;
-}
-
-bool isExtensionSupported(std::span<const vk::ExtensionProperties> availableExtensions,
-                          const char* extensionName) noexcept
-{
-    auto match = [extensionName](const vk::ExtensionProperties& p) {
-        return std::strcmp(p.extensionName, extensionName) == 0;
-    };
-
-    auto result = std::ranges::find_if(availableExtensions, match);
-    return result != availableExtensions.end();
 }
 
 }   // namespace
@@ -199,8 +183,9 @@ void VulkanGraphicsContext::createInstanceAndDebug(uint32_t vulkanApiVersion,
     }
 
     auto availableInstanceExtensions = vk::enumerateInstanceExtensionProperties();
-    bool useDebugMessenger = enableDebugMessengerIfSupported &&
-                             isExtensionSupported(availableInstanceExtensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    bool useDebugMessenger =
+        enableDebugMessengerIfSupported &&
+        utils::isExtensionSupported(availableInstanceExtensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     if (enableDebugMessengerIfSupported && !useDebugMessenger) {
         INFO("Debug messenger util extension requested, but not supported\n");
     }
@@ -284,7 +269,7 @@ void VulkanGraphicsContext::searchPhysicalDevice()
         auto availablePhysicalDeviceExtensions = pd.enumerateDeviceExtensionProperties();
 
         bool swapchainSupport =
-            isExtensionSupported(availablePhysicalDeviceExtensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+            utils::isExtensionSupported(availablePhysicalDeviceExtensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
         if (graphicsFamilyIndex && presentFamilyIndex && swapchainSupport) {
             m_physicalDevice = pd;

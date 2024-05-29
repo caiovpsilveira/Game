@@ -28,3 +28,5 @@ For Clang, I had to add `-stdlib=libc++` to `CMAKE_CXX_FLAGS` for it to recogniz
 You may need to check how to enable C++20/23 features with your compiler.
 
 Alternative, there is a `cmake.sh` script in the project root, which sets the compiler as Clang and overwrites some CMake rules with `CMakeOverrides.txt`, such as compile flags and `CMAKE_EXPORT_COMPILE_COMMANDS`.
+
+Note that there are some compile definitions set in the src/CMakeLists, which tells Vulkan.hpp and VMA to use dynamic entrypoints, which are loaded in the constructor of `VulkanGraphicsContext`.
