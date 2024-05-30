@@ -52,10 +52,11 @@ public:
      * @param vulkanApiVersion 0 or the highest version of Vulkan that the application is designed to use.
      * - This MUST be encoded with the vulkan version numbers, which can be achieved
      *   by using vk::makeApiVersion(v, M, m, p).
+     * - If vulkanApiVersion is not 0, then it MUST be greater than or equal to VK_API_VERSION_1_0.
+     * - If this is not 0 and the machine Vulkan version < vulkanApiVersion, the constructor will throw, as the
+     *   machine does not support the application requirements.
      * - The Khronos validation layers will treat apiVersion as the highest API version of the application targets,
      *   and will validate API usage against the minimum of that version and the implementation version.
-     * - If vulkanApiVersion is not 0, then it MUST be greater than or equal to VK_API_VERSION_1_0.
-     * - The variant version of the instance MUST match that requested in vulkanApiVersion.
      *
      * @param requiredInstanceExtensions array-view of null-terminated UTF-8 strings containing the names of extensions
      * to enable for the created instance.
@@ -74,6 +75,10 @@ public:
      *   the instance creation will fail if it does not support the Debug Utils Messenger extension.
      *
      * @param window A valid SDL_window, which MUST have been created with the "SDL_WINDOW_VULKAN" flag.
+     *
+     * @param requiredDeviceExtensions A list of device extentions to enable.
+     * - This list MUST constains "VK_KHR_swapchain".
+     * - If no physical devices can support ALL extensions specified in this list, the constructor will throw.
      *
      * @param pfnPresentModeKHRselector nullptr, or a pointer to a function that will choose the preferred present mode,
      * passing the supported present modes as a parameter.
@@ -98,6 +103,7 @@ public:
                           bool enableValidationLayersIfSupported,
                           bool enableDebugMessengerIfSupported,
                           SDL_Window* window,
+                          std::span<const char* const> requiredDeviceExtensions,
                           PFN_presentModeKHRselector pfnPresentModeKHRselector,
                           PFN_surfaceFormatKHRselector pfnSurfaceFormatKHRselector);
 
@@ -192,33 +198,37 @@ private:
      * Searches for the first physical device that:
      * - has a graphics queue family,
      * - has a queue family that supports presenting to the VkSurface,
-     * - supports the VK_KHR_swapchain extension.
+     * - supports ALL required device extensions.
+     *
+     * @param requiredDeviceExtensions a list of device extensions that the selected device must support.
      *
      * @throws a vk::SystemError if none devices available matches the criteria.
      */
-    void searchPhysicalDevice();
+    void searchPhysicalDevice(std::span<const char* const> requiredDeviceExtensions);
 
     /*!
      * @brief Creates the VkDevice handle for the logical device.
      *
-     * Requests a single queue from the graphics queue amily and a single queue from the present queue family,
-     * and enables the  VK_KHR_swapchain extension.
+     * Requests a single queue from the graphics queue family and a single queue from the present queue family,
+     * and enables the specified extensions.
      *
      * After this call, if successfull, the device-specific function entrypoints are loaded.
+     *
+     * @param requiredDeviceExtensions a list of device extensions to enable.
      *
      * NOTE: A queue family can support both the graphics queue and the present queue. In this case, only one queue will
      * be created from this family, which will be used for both purposes.
      *
      * @throws a vk::SystemError if the device creation failed.
      */
-    void createLogicalDevice();
+    void createLogicalDevice(std::span<const char* const> requiredDeviceExtensions);
 
     /*!
      * Creates a VMA allocator instance.
      *
      * @throws a vk::SystemError if the allocator creation failed.
      */
-    void createAllocator();
+    void createAllocator(uint32_t vulkanApiVersion);
 
     /*!
      * @brief Creates a VkSwapchainKHR to present to the window surface.

@@ -80,11 +80,37 @@ VulkanGraphicsContext::VulkanGraphicsContext(uint32_t vulkanApiVersion,
                                              bool enableValidationLayersIfSupported,
                                              bool enableDebugMessengerIfSupported,
                                              SDL_Window* window,
+                                             std::span<const char* const> requiredDeviceExtensions,
                                              PFN_presentModeKHRselector pfnPresentModeKHRselector,
                                              PFN_surfaceFormatKHRselector pfnSurfaceFormatKHRselector)
 {
-    assert(vulkanApiVersion == 0 || vulkanApiVersion > vk::ApiVersion10);
+    assert(vulkanApiVersion == 0 || vulkanApiVersion >= vk::ApiVersion10);
     assert(window);
+    assert(utils::containsExtension(requiredDeviceExtensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME));
+
+    VULKAN_HPP_DEFAULT_DISPATCHER.init();   // default dispatcher is noexcept
+    {
+        // local scope to not misuse instanceVersion with vulkanApiVersion
+        auto instanceVersion = VULKAN_HPP_DEFAULT_DISPATCHER.vkEnumerateInstanceVersion ? vk::enumerateInstanceVersion()
+                                                                                        : vk::ApiVersion10;
+        DEBUG_FMT("Machine Vulkan API version: p{} {}.{}.{}\n",
+                  vk::apiVersionVariant(instanceVersion),
+                  vk::apiVersionMajor(instanceVersion),
+                  vk::apiVersionMinor(instanceVersion),
+                  vk::apiVersionPatch(instanceVersion));
+
+        if (vulkanApiVersion && instanceVersion < vulkanApiVersion) {
+            auto errorMsg = std::format("The machine cannot support the application needs!\nThe minimum required "
+                                        "version specified is v{} {}.{}.{}",
+                                        vk::apiVersionVariant(vulkanApiVersion),
+                                        vk::apiVersionMajor(vulkanApiVersion),
+                                        vk::apiVersionMinor(vulkanApiVersion),
+                                        vk::apiVersionPatch(vulkanApiVersion));
+
+            FATAL_FMT("{}\n", errorMsg);
+            throw vk::IncompatibleDriverError(errorMsg);
+        }
+    }
 
     try {
         createInstanceAndDebug(vulkanApiVersion,
@@ -99,11 +125,11 @@ VulkanGraphicsContext::VulkanGraphicsContext(uint32_t vulkanApiVersion,
         }
         DEBUG("Successfullly created surface\n");
 
-        searchPhysicalDevice();
+        searchPhysicalDevice(requiredDeviceExtensions);
 
-        createLogicalDevice();
+        createLogicalDevice(requiredDeviceExtensions);
 
-        createAllocator();
+        createAllocator(vulkanApiVersion);
 
         createSwapchain(window, pfnPresentModeKHRselector, pfnSurfaceFormatKHRselector);
 
@@ -167,8 +193,6 @@ void VulkanGraphicsContext::createInstanceAndDebug(uint32_t vulkanApiVersion,
                                                    bool enableValidationLayersIfSupported,
                                                    bool enableDebugMessengerIfSupported)
 {
-    VULKAN_HPP_DEFAULT_DISPATCHER.init();
-
     vk::ApplicationInfo applicationInfo {.sType = vk::StructureType::eApplicationInfo,
                                          .pNext = nullptr,
                                          .pApplicationName = nullptr,
@@ -232,7 +256,7 @@ void VulkanGraphicsContext::createInstanceAndDebug(uint32_t vulkanApiVersion,
     }
 }
 
-void VulkanGraphicsContext::searchPhysicalDevice()
+void VulkanGraphicsContext::searchPhysicalDevice(std::span<const char* const> requiredDeviceExtensions)
 {
     // TODO: improve physical device selection.
     // Currently selecting the first one with graphicsQueueFamily + presentQueueFamily + swapchainSupport
@@ -268,17 +292,22 @@ void VulkanGraphicsContext::searchPhysicalDevice()
         // Just checking if the VK_KHR_swapchain is supported is enough.
         auto availablePhysicalDeviceExtensions = pd.enumerateDeviceExtensionProperties();
 
-        bool swapchainSupport =
-            utils::isExtensionSupported(availablePhysicalDeviceExtensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+        bool supportsAllExtensions = true;
+        for (auto ext : requiredDeviceExtensions) {
+            if (!utils::isExtensionSupported(availablePhysicalDeviceExtensions, ext)) {
+                supportsAllExtensions = false;
+                break;
+            }
+        }
 
-        if (graphicsFamilyIndex && presentFamilyIndex && swapchainSupport) {
+        if (graphicsFamilyIndex && presentFamilyIndex && supportsAllExtensions) {
             m_physicalDevice = pd;
             m_queueFamiliesIndices.graphicsFamilyIndex = *graphicsFamilyIndex;
             m_queueFamiliesIndices.presentFamilyIndex = *presentFamilyIndex;
 
             auto pdProperties = pd.getProperties();
             DEBUG_FMT(
-                "Successfully encountered a suitable physical device.\nName: {}\nApi version: p{} {}.{}.{}\nDriver "
+                "Successfully encountered a suitable physical device.\nName: {}\nApi version: v{} {}.{}.{}\nDriver "
                 "version: {}\n",
                 static_cast<const char*>(pdProperties.deviceName),
                 vk::apiVersionVariant(pdProperties.apiVersion),
@@ -294,7 +323,7 @@ void VulkanGraphicsContext::searchPhysicalDevice()
     throw vk::UnknownError("No physical device matched the application requirements");
 }
 
-void VulkanGraphicsContext::createLogicalDevice()
+void VulkanGraphicsContext::createLogicalDevice(std::span<const char* const> requiredDeviceExtensions)
 {
     std::vector<uint32_t> uniqueQueueFamiliesIndices {m_queueFamiliesIndices.graphicsFamilyIndex,
                                                       m_queueFamiliesIndices.presentFamilyIndex};
@@ -318,8 +347,6 @@ void VulkanGraphicsContext::createLogicalDevice()
                                                          .pQueuePriorities = queuePriorities};
                    });
 
-    std::vector<const char*> enabledExtensions {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-
     vk::DeviceCreateInfo deviceCreateInfo {.sType = vk::StructureType::eDeviceCreateInfo,
                                            .pNext = nullptr,
                                            .flags = {},
@@ -327,8 +354,9 @@ void VulkanGraphicsContext::createLogicalDevice()
                                            .pQueueCreateInfos = queueCreateInfos.data(),
                                            .enabledLayerCount = 0,
                                            .ppEnabledLayerNames = nullptr,
-                                           .enabledExtensionCount = static_cast<uint32_t>(enabledExtensions.size()),
-                                           .ppEnabledExtensionNames = enabledExtensions.data(),
+                                           .enabledExtensionCount =
+                                               static_cast<uint32_t>(requiredDeviceExtensions.size()),
+                                           .ppEnabledExtensionNames = requiredDeviceExtensions.data(),
                                            .pEnabledFeatures = nullptr};
 
     m_device = m_physicalDevice.createDevice(deviceCreateInfo);
@@ -339,40 +367,25 @@ void VulkanGraphicsContext::createLogicalDevice()
     m_presentQueue = m_device.getQueue(m_queueFamiliesIndices.presentFamilyIndex, 0);
 }
 
-void VulkanGraphicsContext::createAllocator()
+void VulkanGraphicsContext::createAllocator(uint32_t vulkanApiVersion)
 {
     const auto& d = VULKAN_HPP_DEFAULT_DISPATCHER;
-    VmaVulkanFunctions vulkanFunctions {.vkGetInstanceProcAddr = d.vkGetInstanceProcAddr,
-                                        .vkGetDeviceProcAddr = d.vkGetDeviceProcAddr,
-                                        .vkGetPhysicalDeviceProperties = d.vkGetPhysicalDeviceProperties,
-                                        .vkGetPhysicalDeviceMemoryProperties = d.vkGetPhysicalDeviceMemoryProperties,
-                                        .vkAllocateMemory = d.vkAllocateMemory,
-                                        .vkFreeMemory = d.vkFreeMemory,
-                                        .vkMapMemory = d.vkMapMemory,
-                                        .vkUnmapMemory = d.vkUnmapMemory,
-                                        .vkFlushMappedMemoryRanges = d.vkFlushMappedMemoryRanges,
-                                        .vkInvalidateMappedMemoryRanges = d.vkInvalidateMappedMemoryRanges,
-                                        .vkBindBufferMemory = d.vkBindBufferMemory,
-                                        .vkBindImageMemory = d.vkBindImageMemory,
-                                        .vkGetBufferMemoryRequirements = d.vkGetBufferMemoryRequirements,
-                                        .vkGetImageMemoryRequirements = d.vkGetImageMemoryRequirements,
-                                        .vkCreateBuffer = d.vkCreateBuffer,
-                                        .vkDestroyBuffer = d.vkDestroyBuffer,
-                                        .vkCreateImage = d.vkCreateImage,
-                                        .vkDestroyImage = d.vkDestroyImage,
-                                        .vkCmdCopyBuffer = d.vkCmdCopyBuffer,
-                                        .vkGetBufferMemoryRequirements2KHR = d.vkGetBufferMemoryRequirements2,
-                                        .vkGetImageMemoryRequirements2KHR = d.vkGetImageMemoryRequirements2,
-                                        .vkBindBufferMemory2KHR = d.vkBindBufferMemory2,
-                                        .vkBindImageMemory2KHR = d.vkBindImageMemory2,
-                                        .vkGetPhysicalDeviceMemoryProperties2KHR =
-                                            d.vkGetPhysicalDeviceMemoryProperties2,
-                                        .vkGetDeviceBufferMemoryRequirements = d.vkGetDeviceBufferMemoryRequirements,
-                                        .vkGetDeviceImageMemoryRequirements = d.vkGetDeviceImageMemoryRequirements};
-    VmaAllocatorCreateInfo allocatorCreateInfo {};
-    allocatorCreateInfo.physicalDevice = m_physicalDevice, allocatorCreateInfo.device = m_device,
-    allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
-    allocatorCreateInfo.instance = m_instance, allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_3;
+    // Let VMA handle the function pointers loading
+    VmaVulkanFunctions vulkanFunctions {};
+    vulkanFunctions.vkGetInstanceProcAddr = d.vkGetInstanceProcAddr;
+    vulkanFunctions.vkGetDeviceProcAddr = d.vkGetDeviceProcAddr;
+
+    VmaAllocatorCreateInfo allocatorCreateInfo {.flags = 0,
+                                                .physicalDevice = m_physicalDevice,
+                                                .device = m_device,
+                                                .preferredLargeHeapBlockSize = 0,
+                                                .pAllocationCallbacks = nullptr,
+                                                .pDeviceMemoryCallbacks = nullptr,
+                                                .pHeapSizeLimit = nullptr,
+                                                .pVulkanFunctions = &vulkanFunctions,
+                                                .instance = m_instance,
+                                                .vulkanApiVersion = vulkanApiVersion,
+                                                .pTypeExternalMemoryHandleTypes = nullptr};
 
     vk::Result result = static_cast<vk::Result>(vmaCreateAllocator(&allocatorCreateInfo, &m_allocator));
     vk::detail::resultCheck(result, "vmaCreateAllocator");
