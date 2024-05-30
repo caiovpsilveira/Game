@@ -84,7 +84,7 @@ VulkanGraphicsContext::VulkanGraphicsContext(uint32_t vulkanApiVersion,
                                              PFN_presentModeKHRselector pfnPresentModeKHRselector,
                                              PFN_surfaceFormatKHRselector pfnSurfaceFormatKHRselector)
 {
-    assert(vulkanApiVersion == 0 || vulkanApiVersion >= vk::ApiVersion10);
+    assert(vulkanApiVersion >= vk::ApiVersion10);
     assert(window);
     assert(utils::containsExtension(requiredDeviceExtensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME));
 
@@ -99,7 +99,7 @@ VulkanGraphicsContext::VulkanGraphicsContext(uint32_t vulkanApiVersion,
                   vk::apiVersionMinor(instanceVersion),
                   vk::apiVersionPatch(instanceVersion));
 
-        if (vulkanApiVersion && instanceVersion < vulkanApiVersion) {
+        if (instanceVersion < vulkanApiVersion) {
             auto errorMsg = std::format("The machine cannot support the application needs!\nThe minimum required "
                                         "version specified is v{} {}.{}.{}",
                                         vk::apiVersionVariant(vulkanApiVersion),

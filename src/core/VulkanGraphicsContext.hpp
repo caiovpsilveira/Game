@@ -49,12 +49,12 @@ public:
     /*!
      * @brief Constructor that acquires the resources.
      *
-     * @param vulkanApiVersion 0 or the highest version of Vulkan that the application is designed to use.
+     * @param vulkanApiVersion the highest version of Vulkan that the application requires.
      * - This MUST be encoded with the vulkan version numbers, which can be achieved
      *   by using vk::makeApiVersion(v, M, m, p).
-     * - If vulkanApiVersion is not 0, then it MUST be greater than or equal to VK_API_VERSION_1_0.
-     * - If this is not 0 and the machine Vulkan version < vulkanApiVersion, the constructor will throw, as the
-     *   machine does not support the application requirements.
+     * - This MUST be greater than or equal to VK_API_VERSION_1_0.
+     * - If the machine Vulkan version < vulkanApiVersion, the constructor will throw, as the machine does not support
+     *   the application requirements.
      * - The Khronos validation layers will treat apiVersion as the highest API version of the application targets,
      *   and will validate API usage against the minimum of that version and the implementation version.
      *
