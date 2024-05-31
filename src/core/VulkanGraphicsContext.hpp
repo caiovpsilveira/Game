@@ -5,6 +5,7 @@
 #include <vulkan/vulkan.hpp>
 
 // std
+#include <optional>
 #include <span>
 
 struct SDL_Window;
@@ -76,9 +77,26 @@ public:
      *
      * @param window A valid SDL_window, which MUST have been created with the "SDL_WINDOW_VULKAN" flag.
      *
-     * @param requiredDeviceExtensions A list of device extentions to enable.
-     * - This list MUST constains "VK_KHR_swapchain".
-     * - If no physical devices can support ALL extensions specified in this list, the constructor will throw.
+     * @param requiredDeviceExtensions A list of required device extentions.
+     * - This list MUST constain "VK_KHR_swapchain".
+     * - If no physical devices can simultaneously support ALL extensions specified in this list and the
+     *   other criteria specified in the constructor parameters, the constructor will throw.
+     *
+     * @param requiredDevice10Features An optional list of of required device 1.0 features.
+     * - If this is specified and no physical device can simultaneously support ALL features specified
+     *   and the other criteria specified in the constructor parameters, the constructor will throw.
+     *
+     * @param requiredDevice11Features An optional list of of required device 1.1 features.
+     * - If this is specified and no physical device can simultaneously support ALL features specified
+     *   and the other criteria specified in the constructor parameters, the constructor will throw.
+     *
+     * @param requiredDevice12Features An optional list of of required device 1.2 features.
+     * - If this is specified and no physical device can simultaneously support ALL features specified
+     *   and the other criteria specified in the constructor parameters, the constructor will throw.
+     *
+     * @param requiredDevice13Features An optional list of of required device 1.3 features.
+     * - If this is specified and no physical device can simultaneously support ALL features specified
+     *   and the other criteria specified in the constructor parameters, the constructor will throw.
      *
      * @param pfnPresentModeKHRselector nullptr, or a pointer to a function that will choose the preferred present mode,
      * passing the supported present modes as a parameter.
@@ -104,6 +122,10 @@ public:
                           bool enableDebugMessengerIfSupported,
                           SDL_Window* window,
                           std::span<const char* const> requiredDeviceExtensions,
+                          std::optional<vk::PhysicalDeviceFeatures> requiredDevice10Features,
+                          std::optional<vk::PhysicalDeviceVulkan11Features> requiredDevice11Features,
+                          std::optional<vk::PhysicalDeviceVulkan12Features> requiredDevice12Features,
+                          std::optional<vk::PhysicalDeviceVulkan13Features> requiredDevice13Features,
                           PFN_presentModeKHRselector pfnPresentModeKHRselector,
                           PFN_surfaceFormatKHRselector pfnSurfaceFormatKHRselector);
 
@@ -199,12 +221,29 @@ private:
      * - has a graphics queue family,
      * - has a queue family that supports presenting to the VkSurface,
      * - supports ALL required device extensions.
+     * - supports ALL required device features.
      *
-     * @param requiredDeviceExtensions a list of device extensions that the selected device must support.
+     * @param requiredDeviceExtensions a list of device extensions that a device must support.
      *
-     * @throws a vk::SystemError if none devices available matches the criteria.
+     * @param requiredDevice10Features if specified, a structure containing the 1.0 features that a device must
+     * support.
+     *
+     * @param requiredDevice11Features if specified, a structure containing the 1.1 features that a device must
+     * support.
+     *
+     * @param requiredDevice12Features if specified, a structure containing the 1.2 features that a device must
+     * support.
+     *
+     * @param requriedDevice13Features if specified, a structure containing the 1.3 features that a device must
+     * support.
+     *
+     * @throws a vk::SystemError if no devices available supports ALL the specified criteria.
      */
-    void searchPhysicalDevice(std::span<const char* const> requiredDeviceExtensions);
+    void searchPhysicalDevice(std::span<const char* const> requiredDeviceExtensions,
+                              const std::optional<vk::PhysicalDeviceFeatures>& requiredDevice10Features,
+                              const std::optional<vk::PhysicalDeviceVulkan11Features>& requiredDevice11Features,
+                              const std::optional<vk::PhysicalDeviceVulkan12Features>& requiredDevice12Features,
+                              const std::optional<vk::PhysicalDeviceVulkan13Features>& requiredDevice13Features);
 
     /*!
      * @brief Creates the VkDevice handle for the logical device.
@@ -214,14 +253,29 @@ private:
      *
      * After this call, if successfull, the device-specific function entrypoints are loaded.
      *
-     * @param requiredDeviceExtensions a list of device extensions to enable.
+     * @param requiredDeviceExtensions a list of device extensions to be enabled.
+     *
+     * @param requiredDevice10Features an optional structure containing the 1.0 features to be enabled.
+     *
+     * @param requiredDevice11Features an optional structure containing the 1.1 features to be enabled.
+     *
+     * @param requiredDevice12Features an optional structure containing the 1.2 features to be enabled.
+     *
+     * @param requiredDevice13Features an optional structure containing the 1.3 features to be enabled.
      *
      * NOTE: A queue family can support both the graphics queue and the present queue. In this case, only one queue will
      * be created from this family, which will be used for both purposes.
      *
+     * NOTE: This method assumes that the physical devices supports the requirements, which should be queried in
+     * @ref searchPhysicalDevice.
+     *
      * @throws a vk::SystemError if the device creation failed.
      */
-    void createLogicalDevice(std::span<const char* const> requiredDeviceExtensions);
+    void createLogicalDevice(std::span<const char* const> requiredDeviceExtensions,
+                             std::optional<vk::PhysicalDeviceFeatures>& requiredDevice10Features,
+                             std::optional<vk::PhysicalDeviceVulkan11Features>& requiredDevice11Features,
+                             std::optional<vk::PhysicalDeviceVulkan12Features>& requiredDevice12Features,
+                             std::optional<vk::PhysicalDeviceVulkan13Features>& requiredDevice13Features);
 
     /*!
      * Creates a VMA allocator instance.

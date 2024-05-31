@@ -81,6 +81,10 @@ VulkanGraphicsContext::VulkanGraphicsContext(uint32_t vulkanApiVersion,
                                              bool enableDebugMessengerIfSupported,
                                              SDL_Window* window,
                                              std::span<const char* const> requiredDeviceExtensions,
+                                             std::optional<vk::PhysicalDeviceFeatures> requiredDevice10Features,
+                                             std::optional<vk::PhysicalDeviceVulkan11Features> requiredDevice11Features,
+                                             std::optional<vk::PhysicalDeviceVulkan12Features> requiredDevice12Features,
+                                             std::optional<vk::PhysicalDeviceVulkan13Features> requiredDevice13Features,
                                              PFN_presentModeKHRselector pfnPresentModeKHRselector,
                                              PFN_surfaceFormatKHRselector pfnSurfaceFormatKHRselector)
 {
@@ -123,11 +127,19 @@ VulkanGraphicsContext::VulkanGraphicsContext(uint32_t vulkanApiVersion,
             // To be consistent with vulkan.hpp, throw a vk::SystemError
             throw vk::UnknownError(SDL_GetError());
         }
-        DEBUG("Successfullly created surface\n");
+        DEBUG("Successfully created surface\n");
 
-        searchPhysicalDevice(requiredDeviceExtensions);
+        searchPhysicalDevice(requiredDeviceExtensions,
+                             requiredDevice10Features,
+                             requiredDevice11Features,
+                             requiredDevice12Features,
+                             requiredDevice13Features);
 
-        createLogicalDevice(requiredDeviceExtensions);
+        createLogicalDevice(requiredDeviceExtensions,
+                            requiredDevice10Features,
+                            requiredDevice11Features,
+                            requiredDevice12Features,
+                            requiredDevice13Features);
 
         createAllocator(vulkanApiVersion);
 
@@ -247,16 +259,21 @@ void VulkanGraphicsContext::createInstanceAndDebug(uint32_t vulkanApiVersion,
                                                .ppEnabledExtensionNames = extensions.data()};
 
     m_instance = vk::createInstance(instanceCreateInfo);
-    DEBUG("Successfullly created instance\n");
+    DEBUG("Successfully created instance\n");
     VULKAN_HPP_DEFAULT_DISPATCHER.init(m_instance);
 
     if (useDebugMessenger) {
         m_debugMessenger = m_instance.createDebugUtilsMessengerEXT(debugMessengerCreateInfo);
-        DEBUG("Successfullly created debug messenger\n");
+        DEBUG("Successfully created debug messenger\n");
     }
 }
 
-void VulkanGraphicsContext::searchPhysicalDevice(std::span<const char* const> requiredDeviceExtensions)
+void VulkanGraphicsContext::searchPhysicalDevice(
+    std::span<const char* const> requiredDeviceExtensions,
+    const std::optional<vk::PhysicalDeviceFeatures>& requiredDevice10Features,
+    const std::optional<vk::PhysicalDeviceVulkan11Features>& requiredDevice11Features,
+    const std::optional<vk::PhysicalDeviceVulkan12Features>& requiredDevice12Features,
+    const std::optional<vk::PhysicalDeviceVulkan13Features>& requiredDevice13Features)
 {
     // TODO: improve physical device selection.
     // Currently selecting the first one with graphicsQueueFamily + presentQueueFamily + swapchainSupport
@@ -300,7 +317,168 @@ void VulkanGraphicsContext::searchPhysicalDevice(std::span<const char* const> re
             }
         }
 
-        if (graphicsFamilyIndex && presentFamilyIndex && supportsAllExtensions) {
+        vk::PhysicalDeviceFeatures2 chain;
+        auto& supported10Features = chain.features;
+        vk::PhysicalDeviceVulkan11Features supported11Features;
+        vk::PhysicalDeviceVulkan12Features supported12Features;
+        vk::PhysicalDeviceVulkan13Features supported13Features;
+        chain.pNext = &supported11Features;
+        supported11Features.pNext = &supported12Features;
+        supported12Features.pNext = &supported13Features;
+
+        pd.getFeatures2(&chain);
+
+        bool supportsAllFeatures = true;
+        if (requiredDevice10Features) {
+            // clang-format off
+            if (requiredDevice10Features->robustBufferAccess && !supported10Features.robustBufferAccess) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->fullDrawIndexUint32 && !supported10Features.fullDrawIndexUint32) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->imageCubeArray && !supported10Features.imageCubeArray) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->independentBlend && !supported10Features.independentBlend) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->geometryShader && !supported10Features.geometryShader) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->tessellationShader && !supported10Features.tessellationShader) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->sampleRateShading && !supported10Features.sampleRateShading) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->dualSrcBlend && !supported10Features.dualSrcBlend) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->logicOp && !supported10Features.logicOp) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->multiDrawIndirect && !supported10Features.multiDrawIndirect) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->drawIndirectFirstInstance && !supported10Features.drawIndirectFirstInstance) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->depthClamp && !supported10Features.depthClamp) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->depthBiasClamp && !supported10Features.depthBiasClamp) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->fillModeNonSolid && !supported10Features.fillModeNonSolid) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->depthBounds && !supported10Features.depthBounds) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->wideLines && !supported10Features.wideLines) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->largePoints && !supported10Features.largePoints) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->alphaToOne && !supported10Features.alphaToOne) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->multiViewport && !supported10Features.multiViewport) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->samplerAnisotropy && !supported10Features.samplerAnisotropy) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->textureCompressionETC2 && !supported10Features.textureCompressionETC2) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->textureCompressionASTC_LDR && !supported10Features.textureCompressionASTC_LDR) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->textureCompressionBC && !supported10Features.textureCompressionBC) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->occlusionQueryPrecise && !supported10Features.occlusionQueryPrecise) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->pipelineStatisticsQuery && !supported10Features.pipelineStatisticsQuery) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->vertexPipelineStoresAndAtomics && !supported10Features.vertexPipelineStoresAndAtomics) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->fragmentStoresAndAtomics && !supported10Features.fragmentStoresAndAtomics) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->shaderTessellationAndGeometryPointSize && !supported10Features.shaderTessellationAndGeometryPointSize) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->shaderImageGatherExtended && !supported10Features.shaderImageGatherExtended) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->shaderStorageImageExtendedFormats && !supported10Features.shaderStorageImageExtendedFormats) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->shaderStorageImageMultisample && !supported10Features.shaderStorageImageMultisample) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->shaderStorageImageReadWithoutFormat && !supported10Features.shaderStorageImageReadWithoutFormat) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->shaderStorageImageWriteWithoutFormat && !supported10Features.shaderStorageImageWriteWithoutFormat) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->shaderUniformBufferArrayDynamicIndexing && !supported10Features.shaderUniformBufferArrayDynamicIndexing) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->shaderSampledImageArrayDynamicIndexing && !supported10Features.shaderSampledImageArrayDynamicIndexing) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->shaderStorageBufferArrayDynamicIndexing && !supported10Features.shaderStorageBufferArrayDynamicIndexing) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->shaderStorageImageArrayDynamicIndexing && !supported10Features.shaderStorageImageArrayDynamicIndexing) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->shaderClipDistance && !supported10Features.shaderClipDistance) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->shaderCullDistance && !supported10Features.shaderCullDistance) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->shaderFloat64 && !supported10Features.shaderFloat64) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->shaderInt64 && !supported10Features.shaderInt64) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->shaderInt16 && !supported10Features.shaderInt16) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->shaderResourceResidency && !supported10Features.shaderResourceResidency) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->shaderResourceMinLod && !supported10Features.shaderResourceMinLod) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->sparseBinding && !supported10Features.sparseBinding) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->sparseResidencyBuffer && !supported10Features.sparseResidencyBuffer) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->sparseResidencyImage2D && !supported10Features.sparseResidencyImage2D) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->sparseResidencyImage3D && !supported10Features.sparseResidencyImage3D) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->sparseResidency2Samples && !supported10Features.sparseResidency2Samples) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->sparseResidency4Samples && !supported10Features.sparseResidency4Samples) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->sparseResidency8Samples && !supported10Features.sparseResidency8Samples) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->sparseResidency16Samples && !supported10Features.sparseResidency16Samples) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->sparseResidencyAliased && !supported10Features.sparseResidencyAliased) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->variableMultisampleRate && !supported10Features.variableMultisampleRate) { supportsAllFeatures = false; break; }
+            if (requiredDevice10Features->inheritedQueries && !supported10Features.inheritedQueries) { supportsAllFeatures = false; break; }
+            // clang-format on
+        }
+
+        if (supportsAllFeatures && requiredDevice11Features) {
+            // clang-format off
+            if (requiredDevice11Features->storageBuffer16BitAccess && !supported11Features.storageBuffer16BitAccess) { supportsAllFeatures = false; break; }
+            if (requiredDevice11Features->uniformAndStorageBuffer16BitAccess && !supported11Features.uniformAndStorageBuffer16BitAccess) { supportsAllFeatures = false; break; }
+            if (requiredDevice11Features->storagePushConstant16 && !supported11Features.storagePushConstant16) { supportsAllFeatures = false; break; }
+            if (requiredDevice11Features->storageInputOutput16 && !supported11Features.storageInputOutput16) { supportsAllFeatures = false; break; }
+            if (requiredDevice11Features->multiview && !supported11Features.multiview) { supportsAllFeatures = false; break; }
+            if (requiredDevice11Features->multiviewGeometryShader && !supported11Features.multiviewGeometryShader) { supportsAllFeatures = false; break; }
+            if (requiredDevice11Features->multiviewTessellationShader && !supported11Features.multiviewTessellationShader) { supportsAllFeatures = false; break; }
+            if (requiredDevice11Features->variablePointersStorageBuffer && !supported11Features.variablePointersStorageBuffer) { supportsAllFeatures = false; break; }
+            if (requiredDevice11Features->variablePointers && !supported11Features.variablePointers) { supportsAllFeatures = false; break; }
+            if (requiredDevice11Features->protectedMemory && !supported11Features.protectedMemory) { supportsAllFeatures = false; break; }
+            if (requiredDevice11Features->samplerYcbcrConversion && !supported11Features.samplerYcbcrConversion) { supportsAllFeatures = false; break; }
+            if (requiredDevice11Features->shaderDrawParameters && !supported11Features.shaderDrawParameters) { supportsAllFeatures = false; break; }
+            // clang-format on
+        }
+
+        if (supportsAllFeatures && requiredDevice12Features) {
+            // clang-format off
+            if (requiredDevice12Features->samplerMirrorClampToEdge && !supported12Features.samplerMirrorClampToEdge) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->drawIndirectCount && !supported12Features.drawIndirectCount) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->storageBuffer8BitAccess && !supported12Features.storageBuffer8BitAccess) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->uniformAndStorageBuffer8BitAccess && !supported12Features.uniformAndStorageBuffer8BitAccess) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->storagePushConstant8 && !supported12Features.storagePushConstant8) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->shaderBufferInt64Atomics && !supported12Features.shaderBufferInt64Atomics) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->shaderSharedInt64Atomics && !supported12Features.shaderSharedInt64Atomics) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->shaderFloat16 && !supported12Features.shaderFloat16) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->shaderInt8 && !supported12Features.shaderInt8) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->descriptorIndexing && !supported12Features.descriptorIndexing) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->shaderInputAttachmentArrayDynamicIndexing && !supported12Features.shaderInputAttachmentArrayDynamicIndexing) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->shaderUniformTexelBufferArrayDynamicIndexing && !supported12Features.shaderUniformTexelBufferArrayDynamicIndexing) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->shaderStorageTexelBufferArrayDynamicIndexing && !supported12Features.shaderStorageTexelBufferArrayDynamicIndexing) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->shaderUniformBufferArrayNonUniformIndexing && !supported12Features.shaderUniformBufferArrayNonUniformIndexing) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->shaderSampledImageArrayNonUniformIndexing && !supported12Features.shaderSampledImageArrayNonUniformIndexing) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->shaderStorageBufferArrayNonUniformIndexing && !supported12Features.shaderStorageBufferArrayNonUniformIndexing) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->shaderStorageImageArrayNonUniformIndexing && !supported12Features.shaderStorageImageArrayNonUniformIndexing) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->shaderInputAttachmentArrayNonUniformIndexing && !supported12Features.shaderInputAttachmentArrayNonUniformIndexing) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->shaderUniformTexelBufferArrayNonUniformIndexing && !supported12Features.shaderUniformTexelBufferArrayNonUniformIndexing) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->shaderStorageTexelBufferArrayNonUniformIndexing && !supported12Features.shaderStorageTexelBufferArrayNonUniformIndexing) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->descriptorBindingUniformBufferUpdateAfterBind && !supported12Features.descriptorBindingUniformBufferUpdateAfterBind) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->descriptorBindingSampledImageUpdateAfterBind && !supported12Features.descriptorBindingSampledImageUpdateAfterBind) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->descriptorBindingStorageImageUpdateAfterBind && !supported12Features.descriptorBindingStorageImageUpdateAfterBind) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->descriptorBindingStorageBufferUpdateAfterBind && !supported12Features.descriptorBindingStorageBufferUpdateAfterBind) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->descriptorBindingUniformTexelBufferUpdateAfterBind && !supported12Features.descriptorBindingUniformTexelBufferUpdateAfterBind) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->descriptorBindingStorageTexelBufferUpdateAfterBind && !supported12Features.descriptorBindingStorageTexelBufferUpdateAfterBind) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->descriptorBindingUpdateUnusedWhilePending && !supported12Features.descriptorBindingUpdateUnusedWhilePending) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->descriptorBindingPartiallyBound && !supported12Features.descriptorBindingPartiallyBound) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->descriptorBindingVariableDescriptorCount && !supported12Features.descriptorBindingVariableDescriptorCount) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->runtimeDescriptorArray && !supported12Features.runtimeDescriptorArray) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->samplerFilterMinmax && !supported12Features.samplerFilterMinmax) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->scalarBlockLayout && !supported12Features.scalarBlockLayout) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->imagelessFramebuffer && !supported12Features.imagelessFramebuffer) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->uniformBufferStandardLayout && !supported12Features.uniformBufferStandardLayout) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->shaderSubgroupExtendedTypes && !supported12Features.shaderSubgroupExtendedTypes) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->separateDepthStencilLayouts && !supported12Features.separateDepthStencilLayouts) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->hostQueryReset && !supported12Features.hostQueryReset) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->timelineSemaphore && !supported12Features.timelineSemaphore) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->bufferDeviceAddress && !supported12Features.bufferDeviceAddress) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->bufferDeviceAddressCaptureReplay && !supported12Features.bufferDeviceAddressCaptureReplay) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->bufferDeviceAddressMultiDevice && !supported12Features.bufferDeviceAddressMultiDevice) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->vulkanMemoryModel && !supported12Features.vulkanMemoryModel) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->vulkanMemoryModelDeviceScope && !supported12Features.vulkanMemoryModelDeviceScope) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->vulkanMemoryModelAvailabilityVisibilityChains && !supported12Features.vulkanMemoryModelAvailabilityVisibilityChains) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->shaderOutputViewportIndex && !supported12Features.shaderOutputViewportIndex) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->shaderOutputLayer && !supported12Features.shaderOutputLayer) { supportsAllFeatures = false; break; };
+            if (requiredDevice12Features->subgroupBroadcastDynamicId && !supported12Features.subgroupBroadcastDynamicId) { supportsAllFeatures = false; break; };
+            // clang-format on
+        }
+
+        if (supportsAllFeatures && requiredDevice13Features) {
+            // clang-format off
+            if (requiredDevice13Features->robustImageAccess && !supported13Features.robustImageAccess) { supportsAllFeatures = false; break; }
+            if (requiredDevice13Features->inlineUniformBlock && !supported13Features.inlineUniformBlock) { supportsAllFeatures = false; break; }
+            if (requiredDevice13Features->descriptorBindingInlineUniformBlockUpdateAfterBind && !supported13Features.descriptorBindingInlineUniformBlockUpdateAfterBind) { supportsAllFeatures = false; break; }
+            if (requiredDevice13Features->pipelineCreationCacheControl && !supported13Features.pipelineCreationCacheControl) { supportsAllFeatures = false; break; }
+            if (requiredDevice13Features->privateData && !supported13Features.privateData) { supportsAllFeatures = false; break; }
+            if (requiredDevice13Features->shaderDemoteToHelperInvocation && !supported13Features.shaderDemoteToHelperInvocation) { supportsAllFeatures = false; break; }
+            if (requiredDevice13Features->shaderTerminateInvocation && !supported13Features.shaderTerminateInvocation) { supportsAllFeatures = false; break; }
+            if (requiredDevice13Features->subgroupSizeControl && !supported13Features.subgroupSizeControl) { supportsAllFeatures = false; break; }
+            if (requiredDevice13Features->computeFullSubgroups && !supported13Features.computeFullSubgroups) { supportsAllFeatures = false; break; }
+            if (requiredDevice13Features->synchronization2 && !supported13Features.synchronization2) { supportsAllFeatures = false; break; }
+            if (requiredDevice13Features->textureCompressionASTC_HDR && !supported13Features.textureCompressionASTC_HDR) { supportsAllFeatures = false; break; }
+            if (requiredDevice13Features->shaderZeroInitializeWorkgroupMemory && !supported13Features.shaderZeroInitializeWorkgroupMemory) { supportsAllFeatures = false; break; }
+            if (requiredDevice13Features->dynamicRendering && !supported13Features.dynamicRendering) { supportsAllFeatures = false; break; }
+            if (requiredDevice13Features->shaderIntegerDotProduct && !supported13Features.shaderIntegerDotProduct) { supportsAllFeatures = false; break; }
+            if (requiredDevice13Features->maintenance4 && !supported13Features.maintenance4) { supportsAllFeatures = false; break; }
+            // clang-format on
+        }
+
+        if (graphicsFamilyIndex && presentFamilyIndex && supportsAllExtensions && supportsAllFeatures) {
             m_physicalDevice = pd;
             m_queueFamiliesIndices.graphicsFamilyIndex = *graphicsFamilyIndex;
             m_queueFamiliesIndices.presentFamilyIndex = *presentFamilyIndex;
@@ -323,7 +501,12 @@ void VulkanGraphicsContext::searchPhysicalDevice(std::span<const char* const> re
     throw vk::UnknownError("No physical device matched the application requirements");
 }
 
-void VulkanGraphicsContext::createLogicalDevice(std::span<const char* const> requiredDeviceExtensions)
+void VulkanGraphicsContext::createLogicalDevice(
+    std::span<const char* const> requiredDeviceExtensions,
+    std::optional<vk::PhysicalDeviceFeatures>& requiredDevice10Features,
+    std::optional<vk::PhysicalDeviceVulkan11Features>& requiredDevice11Features,
+    std::optional<vk::PhysicalDeviceVulkan12Features>& requiredDevice12Features,
+    std::optional<vk::PhysicalDeviceVulkan13Features>& requiredDevice13Features)
 {
     std::vector<uint32_t> uniqueQueueFamiliesIndices {m_queueFamiliesIndices.graphicsFamilyIndex,
                                                       m_queueFamiliesIndices.presentFamilyIndex};
@@ -347,17 +530,47 @@ void VulkanGraphicsContext::createLogicalDevice(std::span<const char* const> req
                                                          .pQueuePriorities = queuePriorities};
                    });
 
-    vk::DeviceCreateInfo deviceCreateInfo {.sType = vk::StructureType::eDeviceCreateInfo,
-                                           .pNext = nullptr,
-                                           .flags = {},
-                                           .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
-                                           .pQueueCreateInfos = queueCreateInfos.data(),
-                                           .enabledLayerCount = 0,
-                                           .ppEnabledLayerNames = nullptr,
-                                           .enabledExtensionCount =
-                                               static_cast<uint32_t>(requiredDeviceExtensions.size()),
-                                           .ppEnabledExtensionNames = requiredDeviceExtensions.data(),
-                                           .pEnabledFeatures = nullptr};
+    // Create a chain (linked list) of structure types for device features
+    // 1.0 features is directly linked as pFeatures
+    void* deviceCreateInfoPNext = nullptr;   // none
+
+    if (requiredDevice11Features) {
+        // Emplace 1.1 in the front of the chain
+        deviceCreateInfoPNext = &(requiredDevice11Features.value());
+    }
+
+    if (requiredDevice12Features) {
+        if (requiredDevice11Features && deviceCreateInfoPNext == &(requiredDevice11Features.value())) {
+            // 1.1 is the beggining of the chain.
+            requiredDevice12Features->pNext = &(requiredDevice11Features.value());
+        }
+        // Emplace 1.2 in the front of the chain
+        deviceCreateInfoPNext = &(requiredDevice12Features.value());
+    }
+
+    if (requiredDevice13Features) {
+        if (requiredDevice11Features && deviceCreateInfoPNext == &(requiredDevice11Features.value())) {
+            // 1.1 is the beggining of the chain.
+            requiredDevice13Features->pNext = &(requiredDevice11Features.value());
+        } else if (requiredDevice12Features && deviceCreateInfoPNext == &(requiredDevice12Features.value())) {
+            // 1.2 is the beggining of the chain.
+            requiredDevice13Features->pNext = &(requiredDevice12Features.value());
+        }
+        // Emplace 1.3 in the front of the chain
+        deviceCreateInfoPNext = &(requiredDevice13Features.value());
+    }
+
+    vk::DeviceCreateInfo deviceCreateInfo {
+        .sType = vk::StructureType::eDeviceCreateInfo,
+        .pNext = deviceCreateInfoPNext,
+        .flags = {},
+        .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
+        .pQueueCreateInfos = queueCreateInfos.data(),
+        .enabledLayerCount = 0,
+        .ppEnabledLayerNames = nullptr,
+        .enabledExtensionCount = static_cast<uint32_t>(requiredDeviceExtensions.size()),
+        .ppEnabledExtensionNames = requiredDeviceExtensions.data(),
+        .pEnabledFeatures = requiredDevice10Features ? &(requiredDevice10Features.value()) : nullptr};
 
     m_device = m_physicalDevice.createDevice(deviceCreateInfo);
     DEBUG("Successfully created logical device\n");

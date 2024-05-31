@@ -17,6 +17,9 @@ int main()
 
     std::vector<const char*> requiredDeviceExtensions {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
+    vk::PhysicalDeviceVulkan13Features features13 {};
+    features13.dynamicRendering = true;
+
     try {
         auto vkContext = core::VulkanGraphicsContext(vk::makeApiVersion(0, 1, 3, 0),
                                                      ext,
@@ -24,6 +27,10 @@ int main()
                                                      true,
                                                      window,
                                                      requiredDeviceExtensions,
+                                                     {},
+                                                     {},
+                                                     {},
+                                                     features13,
                                                      nullptr,
                                                      nullptr);
     } catch (const std::exception& e) {
