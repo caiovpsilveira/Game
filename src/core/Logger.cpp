@@ -8,7 +8,7 @@ namespace core
 
 namespace
 {
-const char* toLabelCStr(LogLevel l) noexcept
+const char* labelToCStr(LogLevel l) noexcept
 {
     switch (l) {
         case LogLevel::FATAL: return "[FATAL]: ";
@@ -24,7 +24,7 @@ const char* toLabelCStr(LogLevel l) noexcept
 
 void _log(LogLevel l, std::string_view str)
 {
-    std::cout << toLabelCStr(l) << str;
+    std::cout << labelToCStr(l) << str;
 }
 
 }   // namespace core
