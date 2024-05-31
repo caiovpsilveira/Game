@@ -324,14 +324,23 @@ void VulkanGraphicsContext::searchPhysicalDevice(
             }
         }
 
+        auto deviceApiVersion = pd.getProperties().apiVersion;
+
         vk::PhysicalDeviceFeatures2 chain;
         auto& supported10Features = chain.features;
         vk::PhysicalDeviceVulkan11Features supported11Features;
         vk::PhysicalDeviceVulkan12Features supported12Features;
         vk::PhysicalDeviceVulkan13Features supported13Features;
-        chain.pNext = &supported11Features;
-        supported11Features.pNext = &supported12Features;
-        supported12Features.pNext = &supported13Features;
+
+        if (deviceApiVersion >= vk::ApiVersion11) {
+            chain.pNext = &supported11Features;
+            if (deviceApiVersion >= vk::ApiVersion12) {
+                supported11Features.pNext = &supported12Features;
+                if (deviceApiVersion >= vk::ApiVersion13) {
+                    supported12Features.pNext = &supported13Features;
+                }
+            }
+        }
 
         pd.getFeatures2(&chain);
 
@@ -398,6 +407,7 @@ void VulkanGraphicsContext::searchPhysicalDevice(
 
         if (supportsAllFeatures && requiredDevice11Features) {
             // clang-format off
+            if (deviceApiVersion < vk::ApiVersion11) { supportsAllFeatures = false; break; }
             if (requiredDevice11Features->storageBuffer16BitAccess && !supported11Features.storageBuffer16BitAccess) { supportsAllFeatures = false; break; }
             if (requiredDevice11Features->uniformAndStorageBuffer16BitAccess && !supported11Features.uniformAndStorageBuffer16BitAccess) { supportsAllFeatures = false; break; }
             if (requiredDevice11Features->storagePushConstant16 && !supported11Features.storagePushConstant16) { supportsAllFeatures = false; break; }
@@ -415,6 +425,7 @@ void VulkanGraphicsContext::searchPhysicalDevice(
 
         if (supportsAllFeatures && requiredDevice12Features) {
             // clang-format off
+            if (deviceApiVersion < vk::ApiVersion12) { supportsAllFeatures = false; break; }
             if (requiredDevice12Features->samplerMirrorClampToEdge && !supported12Features.samplerMirrorClampToEdge) { supportsAllFeatures = false; break; };
             if (requiredDevice12Features->drawIndirectCount && !supported12Features.drawIndirectCount) { supportsAllFeatures = false; break; };
             if (requiredDevice12Features->storageBuffer8BitAccess && !supported12Features.storageBuffer8BitAccess) { supportsAllFeatures = false; break; };
@@ -467,6 +478,7 @@ void VulkanGraphicsContext::searchPhysicalDevice(
 
         if (supportsAllFeatures && requiredDevice13Features) {
             // clang-format off
+            if (deviceApiVersion < vk::ApiVersion13) { supportsAllFeatures = false; break; }
             if (requiredDevice13Features->robustImageAccess && !supported13Features.robustImageAccess) { supportsAllFeatures = false; break; }
             if (requiredDevice13Features->inlineUniformBlock && !supported13Features.inlineUniformBlock) { supportsAllFeatures = false; break; }
             if (requiredDevice13Features->descriptorBindingInlineUniformBlockUpdateAfterBind && !supported13Features.descriptorBindingInlineUniformBlockUpdateAfterBind) { supportsAllFeatures = false; break; }
