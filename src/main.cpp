@@ -21,18 +21,15 @@ int main()
     features13.dynamicRendering = true;
 
     try {
-        auto vkContext = core::VulkanGraphicsContext(vk::makeApiVersion(0, 1, 3, 0),
-                                                     ext,
-                                                     true,
-                                                     true,
-                                                     window,
-                                                     requiredDeviceExtensions,
-                                                     {},
-                                                     {},
-                                                     {},
-                                                     features13,
-                                                     nullptr,
-                                                     nullptr);
+        core::VulkanGraphicsContextCreateInfo createInfo {};
+        createInfo.vulkanApiVersion = vk::makeApiVersion(0, 1, 3, 0);
+        createInfo.requiredInstanceExtensions = ext;
+        createInfo.requiredDeviceExtensions = requiredDeviceExtensions;
+        createInfo.enableValidationLayersIfSupported = true;
+        createInfo.enableDebugMessengerIfSupported = true;
+        createInfo.window = window;
+        createInfo.requiredDevice13Features = features13;
+        auto vkContext = core::VulkanGraphicsContext(createInfo);
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
     }

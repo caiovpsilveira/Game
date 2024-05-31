@@ -18,6 +18,111 @@ using PFN_presentModeKHRselector = vk::PresentModeKHR (*)(std::span<const vk::Pr
 using PFN_surfaceFormatKHRselector = vk::SurfaceFormatKHR (*)(std::span<const vk::SurfaceFormatKHR>);
 
 /*!
+ * Structure to configure the parameters required for creating a @ref VulkanGraphicsContext instance.
+ */
+struct VulkanGraphicsContextCreateInfo {
+    /*!
+     * Initializes every member to 0, false, nullptr or the default constructor.
+     * Non-required parameters will be initialized with the "none" semantic.
+     */
+    VulkanGraphicsContextCreateInfo() noexcept;
+
+    /*!
+     * @param vulkanApiVersion the highest version of Vulkan that the application requires.
+     * - This MUST be encoded with the vulkan version numbers, which can be achieved
+     *   by using vk::makeApiVersion(v, M, m, p).
+     * - This MUST be greater than or equal to VK_API_VERSION_1_0.
+     * - If the machine Vulkan version < vulkanApiVersion, the constructor will throw, as the machine does not support
+     *   the application requirements.
+     * - The Khronos validation layers will treat apiVersion as the highest API version of the application targets,
+     *   and will validate API usage against the minimum of that version and the implementation version.
+     */
+    uint32_t vulkanApiVersion;
+
+    /*!
+     * @param requiredInstanceExtensions array-view of null-terminated UTF-8 strings containing the names of
+     * extensions to enable for the created instance.
+     * - This MUST include "VK_KHR_surface" and the specific platform surface extension, such as
+     * "VK_KHR_win32_surface" or "VK_KHR_xcb_surface".
+     */
+    std::span<const char* const> requiredInstanceExtensions;
+
+    /*!
+     * @param enableValidationLayersIfSupported a flag to enable validation layers, if supported by the Vulkan
+     * instance.
+     * - If this flag is true and the validation layers are not supported, the instance creation will proceed
+     * without requesting the validation layers.
+     */
+    bool enableValidationLayersIfSupported;
+
+    /*!
+     * @param enableDebugMessengerIfSupported a flag to create a VkDebugUtilsMessengerEXT instance, if supported by
+     * the Vulkan instance.
+     * - If this flag is true and the debug utils messenger extension is not supported, the instance creation will
+     *   proceed without requesting the extension.
+     * - If "VK_EXT_debug_utils" is within "requiredInstanceExtensions", this flag will effectively have no effect,
+     * and the instance creation will fail if it does not support the Debug Utils Messenger extension.
+     */
+    bool enableDebugMessengerIfSupported;
+
+    /*!
+     * @param window A valid SDL_window, which MUST have been created with the "SDL_WINDOW_VULKAN" flag.
+     */
+    SDL_Window* window;
+
+    /*!
+     * @param requiredDeviceExtensions A list of required device extentions.
+     * - This list MUST constain "VK_KHR_swapchain".
+     * - If no physical devices can simultaneously support ALL extensions specified in this list and the
+     *   other criteria specified in the constructor parameters, the constructor will throw.
+     */
+    std::span<const char* const> requiredDeviceExtensions;
+
+    /*!
+     * @param requiredDevice10Features An optional list of of required device 1.0 features.
+     * - If this is specified and no physical device can simultaneously support ALL features specified
+     *   and the other criteria specified in the constructor parameters, the constructor will throw.
+     */
+    std::optional<vk::PhysicalDeviceFeatures> requiredDevice10Features;
+
+    /*!
+     * @param requiredDevice11Features An optional list of of required device 1.1 features.
+     * - If this is specified and no physical device can simultaneously support ALL features specified
+     *   and the other criteria specified in the constructor parameters, the constructor will throw.
+     */
+    std::optional<vk::PhysicalDeviceVulkan11Features> requiredDevice11Features;
+
+    /*!
+     * @param requiredDevice12Features An optional list of of required device 1.2 features.
+     * - If this is specified and no physical device can simultaneously support ALL features specified
+     *   and the other criteria specified in the constructor parameters, the constructor will throw.
+     */
+    std::optional<vk::PhysicalDeviceVulkan12Features> requiredDevice12Features;
+
+    /*!
+     * @param requiredDevice13Features An optional list of of required device 1.3 features.
+     * - If this is specified and no physical device can simultaneously support ALL features specified
+     *   and the other criteria specified in the constructor parameters, the constructor will throw.
+     */
+    std::optional<vk::PhysicalDeviceVulkan13Features> requiredDevice13Features;
+
+    /*!
+     * @param pfnPresentModeKHRselector nullptr, or a pointer to a function that will choose the preferred present
+     * mode, passing the supported present modes as a parameter.
+     * - If this is nullptr, the used present mode will be FIFO, as it's guaranteed to be supported.
+     */
+    PFN_presentModeKHRselector pfnPresentModeKHRselector;
+
+    /*!
+     * @param pfnSurfaceFormatKHRselector nullptr, or a pointer to a function that will choose the preferred surface
+     * format, passing the supported surface formats as a parameter.
+     * - If this is nullptr, the used surface format used will be the first enumerated by the physical device,
+     *   as it's guaranteed that the physical device will suport at least one surface format.
+     */
+    PFN_surfaceFormatKHRselector pfnSurfaceFormatKHRselector;
+};
+
+/*!
  * @brief RAII Class that manages common resources in a Vulkan Graphics application.
  *
  * This class automatically loads the necessary Vulkan entrypoints using the DispatchLoaderDynamic class provided by
@@ -48,64 +153,11 @@ public:
     VulkanGraphicsContext() noexcept = default;
 
     /*!
-     * @brief Constructor that acquires the resources.
+     * Constructor that acquires the resources.
      *
-     * @param vulkanApiVersion the highest version of Vulkan that the application requires.
-     * - This MUST be encoded with the vulkan version numbers, which can be achieved
-     *   by using vk::makeApiVersion(v, M, m, p).
-     * - This MUST be greater than or equal to VK_API_VERSION_1_0.
-     * - If the machine Vulkan version < vulkanApiVersion, the constructor will throw, as the machine does not support
-     *   the application requirements.
-     * - The Khronos validation layers will treat apiVersion as the highest API version of the application targets,
-     *   and will validate API usage against the minimum of that version and the implementation version.
-     *
-     * @param requiredInstanceExtensions array-view of null-terminated UTF-8 strings containing the names of extensions
-     * to enable for the created instance.
-     * - This MUST include "VK_KHR_surface" and the specific platform surface extension, such as "VK_KHR_win32_surface"
-     *   or "VK_KHR_xcb_surface".
-     *
-     * @param enableValidationLayersIfSupported a flag to enable validation layers, if supported by the Vulkan instance.
-     * - If this flag is true and the validation layers are not supported, the instance creation will proceed without
-     *   requesting the validation layers.
-     *
-     * @param enableDebugMessengerIfSupported a flag to create a VkDebugUtilsMessengerEXT instance, if supported by the
-     * Vulkan instance.
-     * - If this flag is true and the debug utils messenger extension is not supported, the instance creation will
-     *   proceed without requesting the extension.
-     * - If "VK_EXT_debug_utils" is within "requiredInstanceExtensions", this flag will effectively have no effect, and
-     *   the instance creation will fail if it does not support the Debug Utils Messenger extension.
-     *
-     * @param window A valid SDL_window, which MUST have been created with the "SDL_WINDOW_VULKAN" flag.
-     *
-     * @param requiredDeviceExtensions A list of required device extentions.
-     * - This list MUST constain "VK_KHR_swapchain".
-     * - If no physical devices can simultaneously support ALL extensions specified in this list and the
-     *   other criteria specified in the constructor parameters, the constructor will throw.
-     *
-     * @param requiredDevice10Features An optional list of of required device 1.0 features.
-     * - If this is specified and no physical device can simultaneously support ALL features specified
-     *   and the other criteria specified in the constructor parameters, the constructor will throw.
-     *
-     * @param requiredDevice11Features An optional list of of required device 1.1 features.
-     * - If this is specified and no physical device can simultaneously support ALL features specified
-     *   and the other criteria specified in the constructor parameters, the constructor will throw.
-     *
-     * @param requiredDevice12Features An optional list of of required device 1.2 features.
-     * - If this is specified and no physical device can simultaneously support ALL features specified
-     *   and the other criteria specified in the constructor parameters, the constructor will throw.
-     *
-     * @param requiredDevice13Features An optional list of of required device 1.3 features.
-     * - If this is specified and no physical device can simultaneously support ALL features specified
-     *   and the other criteria specified in the constructor parameters, the constructor will throw.
-     *
-     * @param pfnPresentModeKHRselector nullptr, or a pointer to a function that will choose the preferred present mode,
-     * passing the supported present modes as a parameter.
-     * - If this is nullptr, the used present mode will be FIFO, as it's guaranteed to be supported.
-     *
-     * @param pfnSurfaceFormatKHRselector nullptr, or a pointer to a function that will choose the preferred surface
-     * format, passing the supported surface formats as a parameter.
-     * - If this is nullptr, the used surface format used will be the first enumerated by the physical device,
-     *   as it's guaranteed that the physical device will suport at least one surface format.
+     * @param createInfo a reference to a @ref VulkanGraphicsContextCreateInfo containing the information about how to
+     * create the VulkanGraphicsContext instance. All parameters information is available on the structure
+     * documentation.
      *
      * @throws a vk::SystemError containing the error information.
      * This can be because:
@@ -116,18 +168,7 @@ public:
      *
      * If the creation fails, all acquired resources are released.
      */
-    VulkanGraphicsContext(uint32_t vulkanApiVersion,
-                          std::span<const char* const> requiredInstanceExtensions,
-                          bool enableValidationLayersIfSupported,
-                          bool enableDebugMessengerIfSupported,
-                          SDL_Window* window,
-                          std::span<const char* const> requiredDeviceExtensions,
-                          std::optional<vk::PhysicalDeviceFeatures> requiredDevice10Features,
-                          std::optional<vk::PhysicalDeviceVulkan11Features> requiredDevice11Features,
-                          std::optional<vk::PhysicalDeviceVulkan12Features> requiredDevice12Features,
-                          std::optional<vk::PhysicalDeviceVulkan13Features> requiredDevice13Features,
-                          PFN_presentModeKHRselector pfnPresentModeKHRselector,
-                          PFN_surfaceFormatKHRselector pfnSurfaceFormatKHRselector);
+    VulkanGraphicsContext(const VulkanGraphicsContextCreateInfo& createInfo);
 
     VulkanGraphicsContext(const VulkanGraphicsContext&) = delete;
     VulkanGraphicsContext& operator=(const VulkanGraphicsContext&) = delete;
@@ -237,6 +278,8 @@ private:
      * @param requriedDevice13Features if specified, a structure containing the 1.3 features that a device must
      * support.
      *
+     * This method creates a copy in the parameters to modify the features.pNext.
+     *
      * @throws a vk::SystemError if no devices available supports ALL the specified criteria.
      */
     void searchPhysicalDevice(std::span<const char* const> requiredDeviceExtensions,
@@ -272,10 +315,10 @@ private:
      * @throws a vk::SystemError if the device creation failed.
      */
     void createLogicalDevice(std::span<const char* const> requiredDeviceExtensions,
-                             std::optional<vk::PhysicalDeviceFeatures>& requiredDevice10Features,
-                             std::optional<vk::PhysicalDeviceVulkan11Features>& requiredDevice11Features,
-                             std::optional<vk::PhysicalDeviceVulkan12Features>& requiredDevice12Features,
-                             std::optional<vk::PhysicalDeviceVulkan13Features>& requiredDevice13Features);
+                             std::optional<vk::PhysicalDeviceFeatures> requiredDevice10Features,
+                             std::optional<vk::PhysicalDeviceVulkan11Features> requiredDevice11Features,
+                             std::optional<vk::PhysicalDeviceVulkan12Features> requiredDevice12Features,
+                             std::optional<vk::PhysicalDeviceVulkan13Features> requiredDevice13Features);
 
     /*!
      * Creates a VMA allocator instance.

@@ -75,22 +75,26 @@ bool isValidationLayerSupported()
 
 }   // namespace
 
-VulkanGraphicsContext::VulkanGraphicsContext(uint32_t vulkanApiVersion,
-                                             std::span<const char* const> requiredInstanceExtensions,
-                                             bool enableValidationLayersIfSupported,
-                                             bool enableDebugMessengerIfSupported,
-                                             SDL_Window* window,
-                                             std::span<const char* const> requiredDeviceExtensions,
-                                             std::optional<vk::PhysicalDeviceFeatures> requiredDevice10Features,
-                                             std::optional<vk::PhysicalDeviceVulkan11Features> requiredDevice11Features,
-                                             std::optional<vk::PhysicalDeviceVulkan12Features> requiredDevice12Features,
-                                             std::optional<vk::PhysicalDeviceVulkan13Features> requiredDevice13Features,
-                                             PFN_presentModeKHRselector pfnPresentModeKHRselector,
-                                             PFN_surfaceFormatKHRselector pfnSurfaceFormatKHRselector)
+VulkanGraphicsContextCreateInfo::VulkanGraphicsContextCreateInfo() noexcept
+    : vulkanApiVersion(0)
+    , requiredInstanceExtensions()
+    , enableValidationLayersIfSupported(false)
+    , enableDebugMessengerIfSupported(false)
+    , window(nullptr)
+    , requiredDeviceExtensions()
+    , requiredDevice10Features()
+    , requiredDevice11Features()
+    , requiredDevice12Features()
+    , requiredDevice13Features()
+    , pfnPresentModeKHRselector(nullptr)
+    , pfnSurfaceFormatKHRselector(nullptr)
+{}
+
+VulkanGraphicsContext::VulkanGraphicsContext(const VulkanGraphicsContextCreateInfo& createInfo)
 {
-    assert(vulkanApiVersion >= vk::ApiVersion10);
-    assert(window);
-    assert(utils::containsExtension(requiredDeviceExtensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME));
+    assert(createInfo.vulkanApiVersion >= vk::ApiVersion10);
+    assert(createInfo.window);
+    assert(utils::containsExtension(createInfo.requiredDeviceExtensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME));
 
     VULKAN_HPP_DEFAULT_DISPATCHER.init();   // default dispatcher is noexcept
     {
@@ -103,13 +107,13 @@ VulkanGraphicsContext::VulkanGraphicsContext(uint32_t vulkanApiVersion,
                   vk::apiVersionMinor(instanceVersion),
                   vk::apiVersionPatch(instanceVersion));
 
-        if (instanceVersion < vulkanApiVersion) {
+        if (instanceVersion < createInfo.vulkanApiVersion) {
             auto errorMsg = std::format("The machine cannot support the application needs!\nThe minimum required "
                                         "version specified is v{} {}.{}.{}",
-                                        vk::apiVersionVariant(vulkanApiVersion),
-                                        vk::apiVersionMajor(vulkanApiVersion),
-                                        vk::apiVersionMinor(vulkanApiVersion),
-                                        vk::apiVersionPatch(vulkanApiVersion));
+                                        vk::apiVersionVariant(createInfo.vulkanApiVersion),
+                                        vk::apiVersionMajor(createInfo.vulkanApiVersion),
+                                        vk::apiVersionMinor(createInfo.vulkanApiVersion),
+                                        vk::apiVersionPatch(createInfo.vulkanApiVersion));
 
             FATAL_FMT("{}\n", errorMsg);
             throw vk::IncompatibleDriverError(errorMsg);
@@ -117,33 +121,36 @@ VulkanGraphicsContext::VulkanGraphicsContext(uint32_t vulkanApiVersion,
     }
 
     try {
-        createInstanceAndDebug(vulkanApiVersion,
-                               requiredInstanceExtensions,
-                               enableValidationLayersIfSupported,
-                               enableDebugMessengerIfSupported);
+        createInstanceAndDebug(createInfo.vulkanApiVersion,
+                               createInfo.requiredInstanceExtensions,
+                               createInfo.enableValidationLayersIfSupported,
+                               createInfo.enableDebugMessengerIfSupported);
 
-        SDL_bool SDLRes = SDL_Vulkan_CreateSurface(window, m_instance, reinterpret_cast<VkSurfaceKHR*>(&m_surface));
+        SDL_bool SDLRes =
+            SDL_Vulkan_CreateSurface(createInfo.window, m_instance, reinterpret_cast<VkSurfaceKHR*>(&m_surface));
         if (SDLRes != SDL_TRUE) {
             // To be consistent with vulkan.hpp, throw a vk::SystemError
             throw vk::UnknownError(SDL_GetError());
         }
         DEBUG("Successfully created surface\n");
 
-        searchPhysicalDevice(requiredDeviceExtensions,
-                             requiredDevice10Features,
-                             requiredDevice11Features,
-                             requiredDevice12Features,
-                             requiredDevice13Features);
+        searchPhysicalDevice(createInfo.requiredDeviceExtensions,
+                             createInfo.requiredDevice10Features,
+                             createInfo.requiredDevice11Features,
+                             createInfo.requiredDevice12Features,
+                             createInfo.requiredDevice13Features);
 
-        createLogicalDevice(requiredDeviceExtensions,
-                            requiredDevice10Features,
-                            requiredDevice11Features,
-                            requiredDevice12Features,
-                            requiredDevice13Features);
+        createLogicalDevice(createInfo.requiredDeviceExtensions,
+                            createInfo.requiredDevice10Features,
+                            createInfo.requiredDevice11Features,
+                            createInfo.requiredDevice12Features,
+                            createInfo.requiredDevice13Features);
 
-        createAllocator(vulkanApiVersion);
+        createAllocator(createInfo.vulkanApiVersion);
 
-        createSwapchain(window, pfnPresentModeKHRselector, pfnSurfaceFormatKHRselector);
+        createSwapchain(createInfo.window,
+                        createInfo.pfnPresentModeKHRselector,
+                        createInfo.pfnSurfaceFormatKHRselector);
 
         assert(m_instance);
         // assert(m_debugMessenger); // Allowed, can be nullptr if debug is disabled / not supported
@@ -503,10 +510,10 @@ void VulkanGraphicsContext::searchPhysicalDevice(
 
 void VulkanGraphicsContext::createLogicalDevice(
     std::span<const char* const> requiredDeviceExtensions,
-    std::optional<vk::PhysicalDeviceFeatures>& requiredDevice10Features,
-    std::optional<vk::PhysicalDeviceVulkan11Features>& requiredDevice11Features,
-    std::optional<vk::PhysicalDeviceVulkan12Features>& requiredDevice12Features,
-    std::optional<vk::PhysicalDeviceVulkan13Features>& requiredDevice13Features)
+    std::optional<vk::PhysicalDeviceFeatures> requiredDevice10Features,
+    std::optional<vk::PhysicalDeviceVulkan11Features> requiredDevice11Features,
+    std::optional<vk::PhysicalDeviceVulkan12Features> requiredDevice12Features,
+    std::optional<vk::PhysicalDeviceVulkan13Features> requiredDevice13Features)
 {
     std::vector<uint32_t> uniqueQueueFamiliesIndices {m_queueFamiliesIndices.graphicsFamilyIndex,
                                                       m_queueFamiliesIndices.presentFamilyIndex};
