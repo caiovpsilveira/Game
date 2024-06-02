@@ -5,15 +5,19 @@
 #include <vulkan/vulkan.hpp>
 
 // std
+#include <filesystem>
 #include <span>
+#include <vector>
 
 namespace core::utils
 {
 
-bool containsExtension(std::span<const char* const> extensionList, const char* extensionName) noexcept;
+bool containsExtension(std::span<const char* const> extensionsList, const char* extensionName) noexcept;
 
-bool isExtensionSupported(std::span<const vk::ExtensionProperties> availableExtensions,
-                          const char* extensionName) noexcept;
+bool containsExtension(std::span<const vk::ExtensionProperties> extensionsPropertiesList,
+                       const char* extensionName) noexcept;
+
+std::vector<char> readFile(const std::filesystem::path& path);
 
 }   // namespace core::utils
 

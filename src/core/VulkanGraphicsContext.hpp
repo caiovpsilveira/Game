@@ -191,7 +191,7 @@ public:
      * Sets the surface format to be used in the next @ref recreateSwapchain call.
      * NOTE: if the surface format is not supported, @ref recreateSwapchain will fail.
      */
-    void setSwapchainSurfaceFormatKHR(vk::SurfaceFormatKHR surfaceFormatKHR) noexcept
+    void setSwapchainSurfaceFormatKHR(const vk::SurfaceFormatKHR& surfaceFormatKHR) noexcept
     {
         m_currentSwapchainSurfaceFormat = surfaceFormatKHR;
     }

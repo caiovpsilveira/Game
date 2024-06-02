@@ -18,10 +18,13 @@ public:
     void run();
 
 private:
+    void createGraphicsPipeline();
+
+private:
     SDL_Window* m_window;
     core::VulkanGraphicsContext m_vkContext;
 };
 
-}
+}   // namespace game
 
 #endif

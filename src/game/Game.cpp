@@ -1,5 +1,7 @@
 #include "Game.hpp"
 
+#include "core/Utils.hpp"
+
 // libs
 #include <SDL.h>
 #include <SDL_vulkan.h>
@@ -36,12 +38,20 @@ Game::Game()
     createInfo.window = m_window;
     createInfo.requiredDevice13Features = features13;
     m_vkContext = core::VulkanGraphicsContext(createInfo);
+
+    createGraphicsPipeline();
 }
 
 Game::~Game() noexcept
 {
     SDL_DestroyWindow(m_window);
     SDL_Quit();
+}
+
+void Game::createGraphicsPipeline()
+{
+    // auto vertShaderCode = core::utils::readFile("../shaders/vert.spv");
+    // auto fragShaderCode = core::utils::readFile("../shaders/frag.spv");
 }
 
 void Game::run()

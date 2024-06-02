@@ -224,9 +224,8 @@ void VulkanGraphicsContext::createInstanceAndDebug(uint32_t vulkanApiVersion,
     }
 
     auto availableInstanceExtensions = vk::enumerateInstanceExtensionProperties();
-    bool useDebugMessenger =
-        enableDebugMessengerIfSupported &&
-        utils::isExtensionSupported(availableInstanceExtensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    bool useDebugMessenger = enableDebugMessengerIfSupported &&
+                             utils::containsExtension(availableInstanceExtensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     if (enableDebugMessengerIfSupported && !useDebugMessenger) {
         INFO("Debug messenger util extension requested, but not supported\n");
     }
@@ -311,7 +310,7 @@ void VulkanGraphicsContext::searchPhysicalDevice(
 
         bool supportsAllExtensions = true;
         for (auto ext : requiredDeviceExtensions) {
-            if (!utils::isExtensionSupported(availablePhysicalDeviceExtensions, ext)) {
+            if (!utils::containsExtension(availablePhysicalDeviceExtensions, ext)) {
                 supportsAllExtensions = false;
                 break;
             }

@@ -11,7 +11,7 @@ For external dependencies, this requires the Vulkan SDK. You can download the la
 Vulkan SDK is required for both Vulkan and [VulkanMemoryAllocator](https://gpuopen.com/vulkan-memory-allocator/), which is shipped with the Vulkan SDK since 1.3.216.0.
 
 ## Building
-This project is configured with CMake. In-source builds are disabled.
+This project is configured with CMake. In-source builds are disabled. All relative paths consider that the binary is in a `/build` directory, relative to the project root.
 
 ```
 mkdir build
