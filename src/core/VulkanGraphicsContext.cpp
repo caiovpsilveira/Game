@@ -11,6 +11,7 @@
 #include <SDL_vulkan.h>
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan_to_string.hpp>
 
 // std
 #include <algorithm>
@@ -306,11 +307,6 @@ void VulkanGraphicsContext::searchPhysicalDevice(
             }
         }
 
-        // Query swapchain support
-        // The Vulkan specs requires VK_KHR_surface extension to support at least VK_PRESENT_MODE_FIFO_KHR present mode
-        // (ref VkPresentModeKHR(3) Manual Page), and requires at least one VkSurfaceFormatKHR to be supported, with
-        // format != undefined (ref vkGetPhysicalDeviceSurfaceFormatsKHR(3) Manual Page).
-        // Just checking if the VK_KHR_swapchain is supported is enough.
         auto availablePhysicalDeviceExtensions = pd.enumerateDeviceExtensionProperties();
 
         bool supportsAllExtensions = true;
@@ -625,6 +621,11 @@ void VulkanGraphicsContext::createSwapchain(SDL_Window* window,
                                             PFN_presentModeKHRselector pfnPresentModeKHRselector,
                                             PFN_surfaceFormatKHRselector pfnSurfaceFormatKHRselector)
 {
+    // The Vulkan specs requires VK_KHR_surface extension to support at least VK_PRESENT_MODE_FIFO_KHR present mode
+    // (ref VkPresentModeKHR(3) Manual Page)
+    // and requires at least one VkSurfaceFormatKHR to be supported, with format != undefined
+    // (ref vkGetPhysicalDeviceSurfaceFormatsKHR(3) Manual Page).
+
     // Select the default values for the present mode and SurfaceFormatKHR
     if (pfnPresentModeKHRselector != nullptr) {
         auto presentModes = m_physicalDevice.getSurfacePresentModesKHR(m_surface);
@@ -634,8 +635,14 @@ void VulkanGraphicsContext::createSwapchain(SDL_Window* window,
     }
 
     auto surfaceFormats = m_physicalDevice.getSurfaceFormatsKHR(m_surface);
+    assert(surfaceFormats.size() > 0);
     m_currentSwapchainSurfaceFormat =
         pfnSurfaceFormatKHRselector ? pfnSurfaceFormatKHRselector(surfaceFormats) : surfaceFormats[0];
+
+    DEBUG_FMT("Using swapchain present mode = {}, swapchain surface format = {{{}, {}}}\n",
+              vk::to_string(m_currentSwapchainPresentMode),
+              vk::to_string(m_currentSwapchainSurfaceFormat.format),
+              vk::to_string(m_currentSwapchainSurfaceFormat.colorSpace));
 
     recreateSwapchain(window);
 }
