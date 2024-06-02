@@ -18,4 +18,7 @@ endif()
 add_executable(voxel_game)
 
 add_subdirectory(src)
+add_subdirectory(shaders)
 add_subdirectory(third_party)
+
+add_dependencies(voxel_game shaders)

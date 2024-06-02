@@ -8,7 +8,7 @@ I'm using C++20 because of designated initializers, std::span, std::format, std:
 For third_party libraries, I'm using [SDL2](https://www.libsdl.org/), [GLM](https://github.com/g-truc/glm). These are already embedded within the project.
 
 For external dependencies, this requires the Vulkan SDK. You can download the latest Vulkan SDK [here](https://www.lunarg.com/vulkan-sdk/).
-Vulkan SDK is required for both Vulkan and [VulkanMemoryAllocator](https://gpuopen.com/vulkan-memory-allocator/), which is shipped with the Vulkan SDK since 1.3.216.0.
+Vulkan SDK is required for Vulkan, [VulkanMemoryAllocator](https://gpuopen.com/vulkan-memory-allocator/), which is shipped with the Vulkan SDK since 1.3.216.0, and the glslangValidator, which is used to compile GLSL and HLSL shaders into SPIR-V, Vulkan's shader format.
 
 ## Building
 This project is configured with CMake. In-source builds are disabled. All relative paths consider that the binary is in a `/build` directory, relative to the project root.

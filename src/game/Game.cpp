@@ -50,8 +50,8 @@ Game::~Game() noexcept
 
 void Game::createGraphicsPipeline()
 {
-    // auto vertShaderCode = core::utils::readFile("../shaders/vert.spv");
-    // auto fragShaderCode = core::utils::readFile("../shaders/frag.spv");
+    auto vertShaderCode = core::utils::readFile("../shaders/simple_shader.vert.spv");
+    auto fragShaderCode = core::utils::readFile("../shaders/simple_shader.frag.spv");
 }
 
 void Game::run()
