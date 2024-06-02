@@ -1,6 +1,3 @@
-#define VULKAN_HPP_NO_SMART_HANDLE
-#define VULKAN_HPP_NO_CONSTRUCTORS
-
 #define VMA_IMPLEMENTATION
 
 #include "VulkanGraphicsContext.hpp"
