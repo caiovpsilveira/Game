@@ -339,153 +339,165 @@ void VulkanGraphicsContext::searchPhysicalDevice(
         bool supportsAllFeatures = true;
         if (requiredDevice10Features) {
             // clang-format off
-            if (requiredDevice10Features->robustBufferAccess && !supported10Features.robustBufferAccess) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->fullDrawIndexUint32 && !supported10Features.fullDrawIndexUint32) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->imageCubeArray && !supported10Features.imageCubeArray) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->independentBlend && !supported10Features.independentBlend) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->geometryShader && !supported10Features.geometryShader) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->tessellationShader && !supported10Features.tessellationShader) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->sampleRateShading && !supported10Features.sampleRateShading) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->dualSrcBlend && !supported10Features.dualSrcBlend) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->logicOp && !supported10Features.logicOp) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->multiDrawIndirect && !supported10Features.multiDrawIndirect) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->drawIndirectFirstInstance && !supported10Features.drawIndirectFirstInstance) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->depthClamp && !supported10Features.depthClamp) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->depthBiasClamp && !supported10Features.depthBiasClamp) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->fillModeNonSolid && !supported10Features.fillModeNonSolid) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->depthBounds && !supported10Features.depthBounds) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->wideLines && !supported10Features.wideLines) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->largePoints && !supported10Features.largePoints) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->alphaToOne && !supported10Features.alphaToOne) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->multiViewport && !supported10Features.multiViewport) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->samplerAnisotropy && !supported10Features.samplerAnisotropy) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->textureCompressionETC2 && !supported10Features.textureCompressionETC2) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->textureCompressionASTC_LDR && !supported10Features.textureCompressionASTC_LDR) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->textureCompressionBC && !supported10Features.textureCompressionBC) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->occlusionQueryPrecise && !supported10Features.occlusionQueryPrecise) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->pipelineStatisticsQuery && !supported10Features.pipelineStatisticsQuery) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->vertexPipelineStoresAndAtomics && !supported10Features.vertexPipelineStoresAndAtomics) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->fragmentStoresAndAtomics && !supported10Features.fragmentStoresAndAtomics) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->shaderTessellationAndGeometryPointSize && !supported10Features.shaderTessellationAndGeometryPointSize) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->shaderImageGatherExtended && !supported10Features.shaderImageGatherExtended) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->shaderStorageImageExtendedFormats && !supported10Features.shaderStorageImageExtendedFormats) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->shaderStorageImageMultisample && !supported10Features.shaderStorageImageMultisample) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->shaderStorageImageReadWithoutFormat && !supported10Features.shaderStorageImageReadWithoutFormat) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->shaderStorageImageWriteWithoutFormat && !supported10Features.shaderStorageImageWriteWithoutFormat) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->shaderUniformBufferArrayDynamicIndexing && !supported10Features.shaderUniformBufferArrayDynamicIndexing) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->shaderSampledImageArrayDynamicIndexing && !supported10Features.shaderSampledImageArrayDynamicIndexing) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->shaderStorageBufferArrayDynamicIndexing && !supported10Features.shaderStorageBufferArrayDynamicIndexing) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->shaderStorageImageArrayDynamicIndexing && !supported10Features.shaderStorageImageArrayDynamicIndexing) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->shaderClipDistance && !supported10Features.shaderClipDistance) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->shaderCullDistance && !supported10Features.shaderCullDistance) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->shaderFloat64 && !supported10Features.shaderFloat64) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->shaderInt64 && !supported10Features.shaderInt64) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->shaderInt16 && !supported10Features.shaderInt16) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->shaderResourceResidency && !supported10Features.shaderResourceResidency) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->shaderResourceMinLod && !supported10Features.shaderResourceMinLod) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->sparseBinding && !supported10Features.sparseBinding) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->sparseResidencyBuffer && !supported10Features.sparseResidencyBuffer) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->sparseResidencyImage2D && !supported10Features.sparseResidencyImage2D) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->sparseResidencyImage3D && !supported10Features.sparseResidencyImage3D) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->sparseResidency2Samples && !supported10Features.sparseResidency2Samples) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->sparseResidency4Samples && !supported10Features.sparseResidency4Samples) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->sparseResidency8Samples && !supported10Features.sparseResidency8Samples) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->sparseResidency16Samples && !supported10Features.sparseResidency16Samples) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->sparseResidencyAliased && !supported10Features.sparseResidencyAliased) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->variableMultisampleRate && !supported10Features.variableMultisampleRate) { supportsAllFeatures = false; break; }
-            if (requiredDevice10Features->inheritedQueries && !supported10Features.inheritedQueries) { supportsAllFeatures = false; break; }
+            if ((requiredDevice10Features->robustBufferAccess && !supported10Features.robustBufferAccess) ||
+            (requiredDevice10Features->fullDrawIndexUint32 && !supported10Features.fullDrawIndexUint32) ||
+            (requiredDevice10Features->imageCubeArray && !supported10Features.imageCubeArray) ||
+            (requiredDevice10Features->independentBlend && !supported10Features.independentBlend) ||
+            (requiredDevice10Features->geometryShader && !supported10Features.geometryShader) ||
+            (requiredDevice10Features->tessellationShader && !supported10Features.tessellationShader) ||
+            (requiredDevice10Features->sampleRateShading && !supported10Features.sampleRateShading) ||
+            (requiredDevice10Features->dualSrcBlend && !supported10Features.dualSrcBlend) ||
+            (requiredDevice10Features->logicOp && !supported10Features.logicOp) ||
+            (requiredDevice10Features->multiDrawIndirect && !supported10Features.multiDrawIndirect) ||
+            (requiredDevice10Features->drawIndirectFirstInstance && !supported10Features.drawIndirectFirstInstance) ||
+            (requiredDevice10Features->depthClamp && !supported10Features.depthClamp) ||
+            (requiredDevice10Features->depthBiasClamp && !supported10Features.depthBiasClamp) ||
+            (requiredDevice10Features->fillModeNonSolid && !supported10Features.fillModeNonSolid) ||
+            (requiredDevice10Features->depthBounds && !supported10Features.depthBounds) ||
+            (requiredDevice10Features->wideLines && !supported10Features.wideLines) ||
+            (requiredDevice10Features->largePoints && !supported10Features.largePoints) ||
+            (requiredDevice10Features->alphaToOne && !supported10Features.alphaToOne) ||
+            (requiredDevice10Features->multiViewport && !supported10Features.multiViewport) ||
+            (requiredDevice10Features->samplerAnisotropy && !supported10Features.samplerAnisotropy) ||
+            (requiredDevice10Features->textureCompressionETC2 && !supported10Features.textureCompressionETC2) ||
+            (requiredDevice10Features->textureCompressionASTC_LDR && !supported10Features.textureCompressionASTC_LDR) ||
+            (requiredDevice10Features->textureCompressionBC && !supported10Features.textureCompressionBC) ||
+            (requiredDevice10Features->occlusionQueryPrecise && !supported10Features.occlusionQueryPrecise) ||
+            (requiredDevice10Features->pipelineStatisticsQuery && !supported10Features.pipelineStatisticsQuery) ||
+            (requiredDevice10Features->vertexPipelineStoresAndAtomics && !supported10Features.vertexPipelineStoresAndAtomics) ||
+            (requiredDevice10Features->fragmentStoresAndAtomics && !supported10Features.fragmentStoresAndAtomics) ||
+            (requiredDevice10Features->shaderTessellationAndGeometryPointSize && !supported10Features.shaderTessellationAndGeometryPointSize) ||
+            (requiredDevice10Features->shaderImageGatherExtended && !supported10Features.shaderImageGatherExtended) ||
+            (requiredDevice10Features->shaderStorageImageExtendedFormats && !supported10Features.shaderStorageImageExtendedFormats) ||
+            (requiredDevice10Features->shaderStorageImageMultisample && !supported10Features.shaderStorageImageMultisample) ||
+            (requiredDevice10Features->shaderStorageImageReadWithoutFormat && !supported10Features.shaderStorageImageReadWithoutFormat) ||
+            (requiredDevice10Features->shaderStorageImageWriteWithoutFormat && !supported10Features.shaderStorageImageWriteWithoutFormat) ||
+            (requiredDevice10Features->shaderUniformBufferArrayDynamicIndexing && !supported10Features.shaderUniformBufferArrayDynamicIndexing) ||
+            (requiredDevice10Features->shaderSampledImageArrayDynamicIndexing && !supported10Features.shaderSampledImageArrayDynamicIndexing) ||
+            (requiredDevice10Features->shaderStorageBufferArrayDynamicIndexing && !supported10Features.shaderStorageBufferArrayDynamicIndexing) ||
+            (requiredDevice10Features->shaderStorageImageArrayDynamicIndexing && !supported10Features.shaderStorageImageArrayDynamicIndexing) ||
+            (requiredDevice10Features->shaderClipDistance && !supported10Features.shaderClipDistance) ||
+            (requiredDevice10Features->shaderCullDistance && !supported10Features.shaderCullDistance) ||
+            (requiredDevice10Features->shaderFloat64 && !supported10Features.shaderFloat64) ||
+            (requiredDevice10Features->shaderInt64 && !supported10Features.shaderInt64) ||
+            (requiredDevice10Features->shaderInt16 && !supported10Features.shaderInt16) ||
+            (requiredDevice10Features->shaderResourceResidency && !supported10Features.shaderResourceResidency) ||
+            (requiredDevice10Features->shaderResourceMinLod && !supported10Features.shaderResourceMinLod) ||
+            (requiredDevice10Features->sparseBinding && !supported10Features.sparseBinding) ||
+            (requiredDevice10Features->sparseResidencyBuffer && !supported10Features.sparseResidencyBuffer) ||
+            (requiredDevice10Features->sparseResidencyImage2D && !supported10Features.sparseResidencyImage2D) ||
+            (requiredDevice10Features->sparseResidencyImage3D && !supported10Features.sparseResidencyImage3D) ||
+            (requiredDevice10Features->sparseResidency2Samples && !supported10Features.sparseResidency2Samples) ||
+            (requiredDevice10Features->sparseResidency4Samples && !supported10Features.sparseResidency4Samples) ||
+            (requiredDevice10Features->sparseResidency8Samples && !supported10Features.sparseResidency8Samples) ||
+            (requiredDevice10Features->sparseResidency16Samples && !supported10Features.sparseResidency16Samples) ||
+            (requiredDevice10Features->sparseResidencyAliased && !supported10Features.sparseResidencyAliased) ||
+            (requiredDevice10Features->variableMultisampleRate && !supported10Features.variableMultisampleRate) ||
+            (requiredDevice10Features->inheritedQueries && !supported10Features.inheritedQueries))
+            {
+                supportsAllFeatures = false;
+            }
             // clang-format on
         }
 
         if (supportsAllFeatures && requiredDevice11Features) {
             // clang-format off
-            if (deviceApiVersion < vk::ApiVersion11) { supportsAllFeatures = false; break; }
-            if (requiredDevice11Features->storageBuffer16BitAccess && !supported11Features.storageBuffer16BitAccess) { supportsAllFeatures = false; break; }
-            if (requiredDevice11Features->uniformAndStorageBuffer16BitAccess && !supported11Features.uniformAndStorageBuffer16BitAccess) { supportsAllFeatures = false; break; }
-            if (requiredDevice11Features->storagePushConstant16 && !supported11Features.storagePushConstant16) { supportsAllFeatures = false; break; }
-            if (requiredDevice11Features->storageInputOutput16 && !supported11Features.storageInputOutput16) { supportsAllFeatures = false; break; }
-            if (requiredDevice11Features->multiview && !supported11Features.multiview) { supportsAllFeatures = false; break; }
-            if (requiredDevice11Features->multiviewGeometryShader && !supported11Features.multiviewGeometryShader) { supportsAllFeatures = false; break; }
-            if (requiredDevice11Features->multiviewTessellationShader && !supported11Features.multiviewTessellationShader) { supportsAllFeatures = false; break; }
-            if (requiredDevice11Features->variablePointersStorageBuffer && !supported11Features.variablePointersStorageBuffer) { supportsAllFeatures = false; break; }
-            if (requiredDevice11Features->variablePointers && !supported11Features.variablePointers) { supportsAllFeatures = false; break; }
-            if (requiredDevice11Features->protectedMemory && !supported11Features.protectedMemory) { supportsAllFeatures = false; break; }
-            if (requiredDevice11Features->samplerYcbcrConversion && !supported11Features.samplerYcbcrConversion) { supportsAllFeatures = false; break; }
-            if (requiredDevice11Features->shaderDrawParameters && !supported11Features.shaderDrawParameters) { supportsAllFeatures = false; break; }
+            if ((deviceApiVersion < vk::ApiVersion11) ||
+            (requiredDevice11Features->storageBuffer16BitAccess && !supported11Features.storageBuffer16BitAccess) ||
+            (requiredDevice11Features->uniformAndStorageBuffer16BitAccess && !supported11Features.uniformAndStorageBuffer16BitAccess) ||
+            (requiredDevice11Features->storagePushConstant16 && !supported11Features.storagePushConstant16) ||
+            (requiredDevice11Features->storageInputOutput16 && !supported11Features.storageInputOutput16) ||
+            (requiredDevice11Features->multiview && !supported11Features.multiview) ||
+            (requiredDevice11Features->multiviewGeometryShader && !supported11Features.multiviewGeometryShader) ||
+            (requiredDevice11Features->multiviewTessellationShader && !supported11Features.multiviewTessellationShader) ||
+            (requiredDevice11Features->variablePointersStorageBuffer && !supported11Features.variablePointersStorageBuffer) ||
+            (requiredDevice11Features->variablePointers && !supported11Features.variablePointers) ||
+            (requiredDevice11Features->protectedMemory && !supported11Features.protectedMemory) ||
+            (requiredDevice11Features->samplerYcbcrConversion && !supported11Features.samplerYcbcrConversion) ||
+            (requiredDevice11Features->shaderDrawParameters && !supported11Features.shaderDrawParameters))
+            {
+                supportsAllFeatures = false;
+            }
             // clang-format on
         }
 
         if (supportsAllFeatures && requiredDevice12Features) {
             // clang-format off
-            if (deviceApiVersion < vk::ApiVersion12) { supportsAllFeatures = false; break; }
-            if (requiredDevice12Features->samplerMirrorClampToEdge && !supported12Features.samplerMirrorClampToEdge) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->drawIndirectCount && !supported12Features.drawIndirectCount) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->storageBuffer8BitAccess && !supported12Features.storageBuffer8BitAccess) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->uniformAndStorageBuffer8BitAccess && !supported12Features.uniformAndStorageBuffer8BitAccess) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->storagePushConstant8 && !supported12Features.storagePushConstant8) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->shaderBufferInt64Atomics && !supported12Features.shaderBufferInt64Atomics) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->shaderSharedInt64Atomics && !supported12Features.shaderSharedInt64Atomics) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->shaderFloat16 && !supported12Features.shaderFloat16) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->shaderInt8 && !supported12Features.shaderInt8) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->descriptorIndexing && !supported12Features.descriptorIndexing) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->shaderInputAttachmentArrayDynamicIndexing && !supported12Features.shaderInputAttachmentArrayDynamicIndexing) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->shaderUniformTexelBufferArrayDynamicIndexing && !supported12Features.shaderUniformTexelBufferArrayDynamicIndexing) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->shaderStorageTexelBufferArrayDynamicIndexing && !supported12Features.shaderStorageTexelBufferArrayDynamicIndexing) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->shaderUniformBufferArrayNonUniformIndexing && !supported12Features.shaderUniformBufferArrayNonUniformIndexing) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->shaderSampledImageArrayNonUniformIndexing && !supported12Features.shaderSampledImageArrayNonUniformIndexing) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->shaderStorageBufferArrayNonUniformIndexing && !supported12Features.shaderStorageBufferArrayNonUniformIndexing) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->shaderStorageImageArrayNonUniformIndexing && !supported12Features.shaderStorageImageArrayNonUniformIndexing) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->shaderInputAttachmentArrayNonUniformIndexing && !supported12Features.shaderInputAttachmentArrayNonUniformIndexing) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->shaderUniformTexelBufferArrayNonUniformIndexing && !supported12Features.shaderUniformTexelBufferArrayNonUniformIndexing) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->shaderStorageTexelBufferArrayNonUniformIndexing && !supported12Features.shaderStorageTexelBufferArrayNonUniformIndexing) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->descriptorBindingUniformBufferUpdateAfterBind && !supported12Features.descriptorBindingUniformBufferUpdateAfterBind) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->descriptorBindingSampledImageUpdateAfterBind && !supported12Features.descriptorBindingSampledImageUpdateAfterBind) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->descriptorBindingStorageImageUpdateAfterBind && !supported12Features.descriptorBindingStorageImageUpdateAfterBind) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->descriptorBindingStorageBufferUpdateAfterBind && !supported12Features.descriptorBindingStorageBufferUpdateAfterBind) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->descriptorBindingUniformTexelBufferUpdateAfterBind && !supported12Features.descriptorBindingUniformTexelBufferUpdateAfterBind) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->descriptorBindingStorageTexelBufferUpdateAfterBind && !supported12Features.descriptorBindingStorageTexelBufferUpdateAfterBind) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->descriptorBindingUpdateUnusedWhilePending && !supported12Features.descriptorBindingUpdateUnusedWhilePending) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->descriptorBindingPartiallyBound && !supported12Features.descriptorBindingPartiallyBound) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->descriptorBindingVariableDescriptorCount && !supported12Features.descriptorBindingVariableDescriptorCount) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->runtimeDescriptorArray && !supported12Features.runtimeDescriptorArray) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->samplerFilterMinmax && !supported12Features.samplerFilterMinmax) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->scalarBlockLayout && !supported12Features.scalarBlockLayout) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->imagelessFramebuffer && !supported12Features.imagelessFramebuffer) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->uniformBufferStandardLayout && !supported12Features.uniformBufferStandardLayout) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->shaderSubgroupExtendedTypes && !supported12Features.shaderSubgroupExtendedTypes) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->separateDepthStencilLayouts && !supported12Features.separateDepthStencilLayouts) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->hostQueryReset && !supported12Features.hostQueryReset) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->timelineSemaphore && !supported12Features.timelineSemaphore) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->bufferDeviceAddress && !supported12Features.bufferDeviceAddress) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->bufferDeviceAddressCaptureReplay && !supported12Features.bufferDeviceAddressCaptureReplay) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->bufferDeviceAddressMultiDevice && !supported12Features.bufferDeviceAddressMultiDevice) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->vulkanMemoryModel && !supported12Features.vulkanMemoryModel) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->vulkanMemoryModelDeviceScope && !supported12Features.vulkanMemoryModelDeviceScope) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->vulkanMemoryModelAvailabilityVisibilityChains && !supported12Features.vulkanMemoryModelAvailabilityVisibilityChains) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->shaderOutputViewportIndex && !supported12Features.shaderOutputViewportIndex) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->shaderOutputLayer && !supported12Features.shaderOutputLayer) { supportsAllFeatures = false; break; };
-            if (requiredDevice12Features->subgroupBroadcastDynamicId && !supported12Features.subgroupBroadcastDynamicId) { supportsAllFeatures = false; break; };
+            if ((deviceApiVersion < vk::ApiVersion12) ||
+            (requiredDevice12Features->samplerMirrorClampToEdge && !supported12Features.samplerMirrorClampToEdge) ||
+            (requiredDevice12Features->drawIndirectCount && !supported12Features.drawIndirectCount) ||
+            (requiredDevice12Features->storageBuffer8BitAccess && !supported12Features.storageBuffer8BitAccess) ||
+            (requiredDevice12Features->uniformAndStorageBuffer8BitAccess && !supported12Features.uniformAndStorageBuffer8BitAccess) ||
+            (requiredDevice12Features->storagePushConstant8 && !supported12Features.storagePushConstant8) ||
+            (requiredDevice12Features->shaderBufferInt64Atomics && !supported12Features.shaderBufferInt64Atomics) ||
+            (requiredDevice12Features->shaderSharedInt64Atomics && !supported12Features.shaderSharedInt64Atomics) ||
+            (requiredDevice12Features->shaderFloat16 && !supported12Features.shaderFloat16) ||
+            (requiredDevice12Features->shaderInt8 && !supported12Features.shaderInt8) ||
+            (requiredDevice12Features->descriptorIndexing && !supported12Features.descriptorIndexing) ||
+            (requiredDevice12Features->shaderInputAttachmentArrayDynamicIndexing && !supported12Features.shaderInputAttachmentArrayDynamicIndexing) ||
+            (requiredDevice12Features->shaderUniformTexelBufferArrayDynamicIndexing && !supported12Features.shaderUniformTexelBufferArrayDynamicIndexing) ||
+            (requiredDevice12Features->shaderStorageTexelBufferArrayDynamicIndexing && !supported12Features.shaderStorageTexelBufferArrayDynamicIndexing) ||
+            (requiredDevice12Features->shaderUniformBufferArrayNonUniformIndexing && !supported12Features.shaderUniformBufferArrayNonUniformIndexing) ||
+            (requiredDevice12Features->shaderSampledImageArrayNonUniformIndexing && !supported12Features.shaderSampledImageArrayNonUniformIndexing) ||
+            (requiredDevice12Features->shaderStorageBufferArrayNonUniformIndexing && !supported12Features.shaderStorageBufferArrayNonUniformIndexing) ||
+            (requiredDevice12Features->shaderStorageImageArrayNonUniformIndexing && !supported12Features.shaderStorageImageArrayNonUniformIndexing) ||
+            (requiredDevice12Features->shaderInputAttachmentArrayNonUniformIndexing && !supported12Features.shaderInputAttachmentArrayNonUniformIndexing) ||
+            (requiredDevice12Features->shaderUniformTexelBufferArrayNonUniformIndexing && !supported12Features.shaderUniformTexelBufferArrayNonUniformIndexing) ||
+            (requiredDevice12Features->shaderStorageTexelBufferArrayNonUniformIndexing && !supported12Features.shaderStorageTexelBufferArrayNonUniformIndexing) ||
+            (requiredDevice12Features->descriptorBindingUniformBufferUpdateAfterBind && !supported12Features.descriptorBindingUniformBufferUpdateAfterBind) ||
+            (requiredDevice12Features->descriptorBindingSampledImageUpdateAfterBind && !supported12Features.descriptorBindingSampledImageUpdateAfterBind) ||
+            (requiredDevice12Features->descriptorBindingStorageImageUpdateAfterBind && !supported12Features.descriptorBindingStorageImageUpdateAfterBind) ||
+            (requiredDevice12Features->descriptorBindingStorageBufferUpdateAfterBind && !supported12Features.descriptorBindingStorageBufferUpdateAfterBind) ||
+            (requiredDevice12Features->descriptorBindingUniformTexelBufferUpdateAfterBind && !supported12Features.descriptorBindingUniformTexelBufferUpdateAfterBind) ||
+            (requiredDevice12Features->descriptorBindingStorageTexelBufferUpdateAfterBind && !supported12Features.descriptorBindingStorageTexelBufferUpdateAfterBind) ||
+            (requiredDevice12Features->descriptorBindingUpdateUnusedWhilePending && !supported12Features.descriptorBindingUpdateUnusedWhilePending) ||
+            (requiredDevice12Features->descriptorBindingPartiallyBound && !supported12Features.descriptorBindingPartiallyBound) ||
+            (requiredDevice12Features->descriptorBindingVariableDescriptorCount && !supported12Features.descriptorBindingVariableDescriptorCount) ||
+            (requiredDevice12Features->runtimeDescriptorArray && !supported12Features.runtimeDescriptorArray) ||
+            (requiredDevice12Features->samplerFilterMinmax && !supported12Features.samplerFilterMinmax) ||
+            (requiredDevice12Features->scalarBlockLayout && !supported12Features.scalarBlockLayout) ||
+            (requiredDevice12Features->imagelessFramebuffer && !supported12Features.imagelessFramebuffer) ||
+            (requiredDevice12Features->uniformBufferStandardLayout && !supported12Features.uniformBufferStandardLayout) ||
+            (requiredDevice12Features->shaderSubgroupExtendedTypes && !supported12Features.shaderSubgroupExtendedTypes) ||
+            (requiredDevice12Features->separateDepthStencilLayouts && !supported12Features.separateDepthStencilLayouts) ||
+            (requiredDevice12Features->hostQueryReset && !supported12Features.hostQueryReset) ||
+            (requiredDevice12Features->timelineSemaphore && !supported12Features.timelineSemaphore) ||
+            (requiredDevice12Features->bufferDeviceAddress && !supported12Features.bufferDeviceAddress) ||
+            (requiredDevice12Features->bufferDeviceAddressCaptureReplay && !supported12Features.bufferDeviceAddressCaptureReplay) ||
+            (requiredDevice12Features->bufferDeviceAddressMultiDevice && !supported12Features.bufferDeviceAddressMultiDevice) ||
+            (requiredDevice12Features->vulkanMemoryModel && !supported12Features.vulkanMemoryModel) ||
+            (requiredDevice12Features->vulkanMemoryModelDeviceScope && !supported12Features.vulkanMemoryModelDeviceScope) ||
+            (requiredDevice12Features->vulkanMemoryModelAvailabilityVisibilityChains && !supported12Features.vulkanMemoryModelAvailabilityVisibilityChains) ||
+            (requiredDevice12Features->shaderOutputViewportIndex && !supported12Features.shaderOutputViewportIndex) ||
+            (requiredDevice12Features->shaderOutputLayer && !supported12Features.shaderOutputLayer) ||
+            (requiredDevice12Features->subgroupBroadcastDynamicId && !supported12Features.subgroupBroadcastDynamicId))
+            {
+                supportsAllFeatures = false;
+            }
             // clang-format on
         }
 
         if (supportsAllFeatures && requiredDevice13Features) {
             // clang-format off
-            if (deviceApiVersion < vk::ApiVersion13) { supportsAllFeatures = false; break; }
-            if (requiredDevice13Features->robustImageAccess && !supported13Features.robustImageAccess) { supportsAllFeatures = false; break; }
-            if (requiredDevice13Features->inlineUniformBlock && !supported13Features.inlineUniformBlock) { supportsAllFeatures = false; break; }
-            if (requiredDevice13Features->descriptorBindingInlineUniformBlockUpdateAfterBind && !supported13Features.descriptorBindingInlineUniformBlockUpdateAfterBind) { supportsAllFeatures = false; break; }
-            if (requiredDevice13Features->pipelineCreationCacheControl && !supported13Features.pipelineCreationCacheControl) { supportsAllFeatures = false; break; }
-            if (requiredDevice13Features->privateData && !supported13Features.privateData) { supportsAllFeatures = false; break; }
-            if (requiredDevice13Features->shaderDemoteToHelperInvocation && !supported13Features.shaderDemoteToHelperInvocation) { supportsAllFeatures = false; break; }
-            if (requiredDevice13Features->shaderTerminateInvocation && !supported13Features.shaderTerminateInvocation) { supportsAllFeatures = false; break; }
-            if (requiredDevice13Features->subgroupSizeControl && !supported13Features.subgroupSizeControl) { supportsAllFeatures = false; break; }
-            if (requiredDevice13Features->computeFullSubgroups && !supported13Features.computeFullSubgroups) { supportsAllFeatures = false; break; }
-            if (requiredDevice13Features->synchronization2 && !supported13Features.synchronization2) { supportsAllFeatures = false; break; }
-            if (requiredDevice13Features->textureCompressionASTC_HDR && !supported13Features.textureCompressionASTC_HDR) { supportsAllFeatures = false; break; }
-            if (requiredDevice13Features->shaderZeroInitializeWorkgroupMemory && !supported13Features.shaderZeroInitializeWorkgroupMemory) { supportsAllFeatures = false; break; }
-            if (requiredDevice13Features->dynamicRendering && !supported13Features.dynamicRendering) { supportsAllFeatures = false; break; }
-            if (requiredDevice13Features->shaderIntegerDotProduct && !supported13Features.shaderIntegerDotProduct) { supportsAllFeatures = false; break; }
-            if (requiredDevice13Features->maintenance4 && !supported13Features.maintenance4) { supportsAllFeatures = false; break; }
+            if ((deviceApiVersion < vk::ApiVersion13) ||
+            (requiredDevice13Features->robustImageAccess && !supported13Features.robustImageAccess) ||
+            (requiredDevice13Features->inlineUniformBlock && !supported13Features.inlineUniformBlock) ||
+            (requiredDevice13Features->descriptorBindingInlineUniformBlockUpdateAfterBind && !supported13Features.descriptorBindingInlineUniformBlockUpdateAfterBind) ||
+            (requiredDevice13Features->pipelineCreationCacheControl && !supported13Features.pipelineCreationCacheControl) ||
+            (requiredDevice13Features->privateData && !supported13Features.privateData) ||
+            (requiredDevice13Features->shaderDemoteToHelperInvocation && !supported13Features.shaderDemoteToHelperInvocation) ||
+            (requiredDevice13Features->shaderTerminateInvocation && !supported13Features.shaderTerminateInvocation) ||
+            (requiredDevice13Features->subgroupSizeControl && !supported13Features.subgroupSizeControl) ||
+            (requiredDevice13Features->computeFullSubgroups && !supported13Features.computeFullSubgroups) ||
+            (requiredDevice13Features->synchronization2 && !supported13Features.synchronization2) ||
+            (requiredDevice13Features->textureCompressionASTC_HDR && !supported13Features.textureCompressionASTC_HDR) ||
+            (requiredDevice13Features->shaderZeroInitializeWorkgroupMemory && !supported13Features.shaderZeroInitializeWorkgroupMemory) ||
+            (requiredDevice13Features->dynamicRendering && !supported13Features.dynamicRendering) ||
+            (requiredDevice13Features->shaderIntegerDotProduct && !supported13Features.shaderIntegerDotProduct) ||
+            (requiredDevice13Features->maintenance4 && !supported13Features.maintenance4))
+            {
+                supportsAllFeatures = false;
+            }
             // clang-format on
         }
 
