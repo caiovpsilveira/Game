@@ -80,10 +80,10 @@ VulkanGraphicsContextCreateInfo::VulkanGraphicsContextCreateInfo() noexcept
     , enableDebugMessengerIfSupported(false)
     , window(nullptr)
     , requiredDeviceExtensions()
-    , requiredDevice10Features()
-    , requiredDevice11Features()
-    , requiredDevice12Features()
-    , requiredDevice13Features()
+    , requiredDevice10Features(nullptr)
+    , requiredDevice11Features(nullptr)
+    , requiredDevice12Features(nullptr)
+    , requiredDevice13Features(nullptr)
     , pfnPresentModeKHRselector(nullptr)
     , pfnSurfaceFormatKHRselector(nullptr)
 {}
@@ -272,12 +272,11 @@ void VulkanGraphicsContext::createInstanceAndDebug(uint32_t vulkanApiVersion,
     }
 }
 
-void VulkanGraphicsContext::searchPhysicalDevice(
-    std::span<const char* const> requiredDeviceExtensions,
-    const std::optional<vk::PhysicalDeviceFeatures>& requiredDevice10Features,
-    const std::optional<vk::PhysicalDeviceVulkan11Features>& requiredDevice11Features,
-    const std::optional<vk::PhysicalDeviceVulkan12Features>& requiredDevice12Features,
-    const std::optional<vk::PhysicalDeviceVulkan13Features>& requiredDevice13Features)
+void VulkanGraphicsContext::searchPhysicalDevice(std::span<const char* const> requiredDeviceExtensions,
+                                                 const vk::PhysicalDeviceFeatures* requiredDevice10Features,
+                                                 const vk::PhysicalDeviceVulkan11Features* requiredDevice11Features,
+                                                 const vk::PhysicalDeviceVulkan12Features* requiredDevice12Features,
+                                                 const vk::PhysicalDeviceVulkan13Features* requiredDevice13Features)
 {
     // TODO: improve physical device selection.
     // Currently selecting the first one with graphicsQueueFamily + presentQueueFamily + swapchainSupport
@@ -524,12 +523,11 @@ void VulkanGraphicsContext::searchPhysicalDevice(
     throw vk::UnknownError("No physical device matched the application requirements");
 }
 
-void VulkanGraphicsContext::createLogicalDevice(
-    std::span<const char* const> requiredDeviceExtensions,
-    std::optional<vk::PhysicalDeviceFeatures> requiredDevice10Features,
-    std::optional<vk::PhysicalDeviceVulkan11Features> requiredDevice11Features,
-    std::optional<vk::PhysicalDeviceVulkan12Features> requiredDevice12Features,
-    std::optional<vk::PhysicalDeviceVulkan13Features> requiredDevice13Features)
+void VulkanGraphicsContext::createLogicalDevice(std::span<const char* const> requiredDeviceExtensions,
+                                                vk::PhysicalDeviceFeatures* requiredDevice10Features,
+                                                vk::PhysicalDeviceVulkan11Features* requiredDevice11Features,
+                                                vk::PhysicalDeviceVulkan12Features* requiredDevice12Features,
+                                                vk::PhysicalDeviceVulkan13Features* requiredDevice13Features)
 {
     std::vector<uint32_t> uniqueQueueFamiliesIndices {m_queueFamiliesIndices.graphicsFamilyIndex,
                                                       m_queueFamiliesIndices.presentFamilyIndex};
@@ -553,47 +551,47 @@ void VulkanGraphicsContext::createLogicalDevice(
                                                          .pQueuePriorities = queuePriorities};
                    });
 
-    // Create a chain (linked list) of structure types for device features
-    // 1.0 features is directly linked as pFeatures
+    // Create a structure chain of device features
+    // 1.0 features is directly passed as pFeatures
     void* deviceCreateInfoPNext = nullptr;   // none
 
     if (requiredDevice11Features) {
         // Emplace 1.1 in the front of the chain
-        deviceCreateInfoPNext = &(requiredDevice11Features.value());
+        deviceCreateInfoPNext = requiredDevice11Features;
     }
 
     if (requiredDevice12Features) {
-        if (requiredDevice11Features && deviceCreateInfoPNext == &(requiredDevice11Features.value())) {
+        if (requiredDevice11Features && deviceCreateInfoPNext == requiredDevice11Features) {
             // 1.1 is the beggining of the chain.
-            requiredDevice12Features->pNext = &(requiredDevice11Features.value());
+            requiredDevice12Features->pNext = requiredDevice11Features;
         }
         // Emplace 1.2 in the front of the chain
-        deviceCreateInfoPNext = &(requiredDevice12Features.value());
+        deviceCreateInfoPNext = requiredDevice12Features;
     }
 
     if (requiredDevice13Features) {
-        if (requiredDevice11Features && deviceCreateInfoPNext == &(requiredDevice11Features.value())) {
+        if (requiredDevice11Features && deviceCreateInfoPNext == requiredDevice11Features) {
             // 1.1 is the beggining of the chain.
-            requiredDevice13Features->pNext = &(requiredDevice11Features.value());
-        } else if (requiredDevice12Features && deviceCreateInfoPNext == &(requiredDevice12Features.value())) {
+            requiredDevice13Features->pNext = requiredDevice11Features;
+        } else if (requiredDevice12Features && deviceCreateInfoPNext == requiredDevice12Features) {
             // 1.2 is the beggining of the chain.
-            requiredDevice13Features->pNext = &(requiredDevice12Features.value());
+            requiredDevice13Features->pNext = requiredDevice12Features;
         }
         // Emplace 1.3 in the front of the chain
-        deviceCreateInfoPNext = &(requiredDevice13Features.value());
+        deviceCreateInfoPNext = requiredDevice13Features;
     }
 
-    vk::DeviceCreateInfo deviceCreateInfo {
-        .sType = vk::StructureType::eDeviceCreateInfo,
-        .pNext = deviceCreateInfoPNext,
-        .flags = {},
-        .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
-        .pQueueCreateInfos = queueCreateInfos.data(),
-        .enabledLayerCount = 0,
-        .ppEnabledLayerNames = nullptr,
-        .enabledExtensionCount = static_cast<uint32_t>(requiredDeviceExtensions.size()),
-        .ppEnabledExtensionNames = requiredDeviceExtensions.data(),
-        .pEnabledFeatures = requiredDevice10Features ? &(requiredDevice10Features.value()) : nullptr};
+    vk::DeviceCreateInfo deviceCreateInfo {.sType = vk::StructureType::eDeviceCreateInfo,
+                                           .pNext = deviceCreateInfoPNext,
+                                           .flags = {},
+                                           .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
+                                           .pQueueCreateInfos = queueCreateInfos.data(),
+                                           .enabledLayerCount = 0,
+                                           .ppEnabledLayerNames = nullptr,
+                                           .enabledExtensionCount =
+                                               static_cast<uint32_t>(requiredDeviceExtensions.size()),
+                                           .ppEnabledExtensionNames = requiredDeviceExtensions.data(),
+                                           .pEnabledFeatures = requiredDevice10Features};
 
     m_device = m_physicalDevice.createDevice(deviceCreateInfo);
     DEBUG("Successfully created logical device\n");

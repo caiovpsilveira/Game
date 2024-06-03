@@ -5,7 +5,6 @@
 #include <vulkan/vulkan.hpp>
 
 // std
-#include <optional>
 #include <span>
 
 struct SDL_Window;
@@ -79,32 +78,36 @@ struct VulkanGraphicsContextCreateInfo {
     std::span<const char* const> requiredDeviceExtensions;
 
     /*!
-     * @param requiredDevice10Features An optional list of of required device 1.0 features.
+     * @param requiredDevice10Features A ptr to a struct containing the required device 1.0 features, or nullptr.
      * - If this is specified and no physical device can simultaneously support ALL features specified
      *   and the other criteria specified in the constructor parameters, the constructor will throw.
+     * - The pNext member may be modified in the @ref VulkanGraphicsContext ctor call to create a structure chain.
      */
-    std::optional<vk::PhysicalDeviceFeatures> requiredDevice10Features;
+    vk::PhysicalDeviceFeatures* requiredDevice10Features;
 
     /*!
-     * @param requiredDevice11Features An optional list of of required device 1.1 features.
+     * @param requiredDevice11Features A ptr to a struct containing the required device 1.1 features, or nullptr.
      * - If this is specified and no physical device can simultaneously support ALL features specified
      *   and the other criteria specified in the constructor parameters, the constructor will throw.
+     * - The pNext member may be modified in the @ref VulkanGraphicsContext ctor call to create a structure chain.
      */
-    std::optional<vk::PhysicalDeviceVulkan11Features> requiredDevice11Features;
+    vk::PhysicalDeviceVulkan11Features* requiredDevice11Features;
 
     /*!
-     * @param requiredDevice12Features An optional list of of required device 1.2 features.
+     * @param requiredDevice12Features A ptr to a struct containing the required device 1.2 features, or nullptr.
      * - If this is specified and no physical device can simultaneously support ALL features specified
      *   and the other criteria specified in the constructor parameters, the constructor will throw.
+     * - The pNext member may be modified in the @ref VulkanGraphicsContext ctor call to create a structure chain.
      */
-    std::optional<vk::PhysicalDeviceVulkan12Features> requiredDevice12Features;
+    vk::PhysicalDeviceVulkan12Features* requiredDevice12Features;
 
     /*!
-     * @param requiredDevice13Features An optional list of of required device 1.3 features.
+     * @param requiredDevice13Features A ptr to a struct containing the required device 1.3 features, or nullptr.
      * - If this is specified and no physical device can simultaneously support ALL features specified
      *   and the other criteria specified in the constructor parameters, the constructor will throw.
+     * - The pNext member may be modified in the @ref VulkanGraphicsContext ctor call to create a structure chain.
      */
-    std::optional<vk::PhysicalDeviceVulkan13Features> requiredDevice13Features;
+    vk::PhysicalDeviceVulkan13Features* requiredDevice13Features;
 
     /*!
      * @param pfnPresentModeKHRselector nullptr, or a pointer to a function that will choose the preferred present
@@ -267,29 +270,29 @@ private:
      * - supports ALL required device extensions.
      * - supports ALL required device features.
      *
-     * @param requiredDeviceExtensions a list of device extensions that a device must support.
+     * @param requiredDeviceExtensions an array view of device extensions that a device must support.
      *
-     * @param requiredDevice10Features if specified, a structure containing the 1.0 features that a device must
-     * support.
+     * @param requiredDevice10Features a ptr to a structure containing the 1.0 features that a device must
+     * support, or nullptr.
      *
-     * @param requiredDevice11Features if specified, a structure containing the 1.1 features that a device must
-     * support.
+     * @param requiredDevice11Features a ptr to a structure containing the 1.1 features that a device must
+     * support, or nullptr.
      *
-     * @param requiredDevice12Features if specified, a structure containing the 1.2 features that a device must
-     * support.
+     * @param requiredDevice12Features a ptr to a structure containing the 1.2 features that a device must
+     * support, or nullptr.
      *
-     * @param requriedDevice13Features if specified, a structure containing the 1.3 features that a device must
-     * support.
+     * @param requiredDevice13Features a ptr to a structure containing the 1.3 features that a device must
+     * support, or nullptr.
      *
      * This method creates a copy in the parameters to modify the features.pNext.
      *
      * @throws a vk::SystemError if no devices available supports ALL the specified criteria.
      */
     void searchPhysicalDevice(std::span<const char* const> requiredDeviceExtensions,
-                              const std::optional<vk::PhysicalDeviceFeatures>& requiredDevice10Features,
-                              const std::optional<vk::PhysicalDeviceVulkan11Features>& requiredDevice11Features,
-                              const std::optional<vk::PhysicalDeviceVulkan12Features>& requiredDevice12Features,
-                              const std::optional<vk::PhysicalDeviceVulkan13Features>& requiredDevice13Features);
+                              const vk::PhysicalDeviceFeatures* requiredDevice10Features,
+                              const vk::PhysicalDeviceVulkan11Features* requiredDevice11Features,
+                              const vk::PhysicalDeviceVulkan12Features* requiredDevice12Features,
+                              const vk::PhysicalDeviceVulkan13Features* requiredDevice13Features);
 
     /*!
      * @brief Creates the VkDevice handle for the logical device.
@@ -299,15 +302,17 @@ private:
      *
      * After this call, if successfull, the device-specific function entrypoints are loaded.
      *
-     * @param requiredDeviceExtensions a list of device extensions to be enabled.
+     * @param requiredDeviceExtensions an array view of device extensions to be enabled.
      *
-     * @param requiredDevice10Features an optional structure containing the 1.0 features to be enabled.
+     * @param requiredDevice10Features a ptr to a structure containing the 1.0 features to be enabled, or nullptr.
      *
-     * @param requiredDevice11Features an optional structure containing the 1.1 features to be enabled.
+     * @param requiredDevice11Features a ptr to a structure containing the 1.1 features to be enabled, or nullptr.
      *
-     * @param requiredDevice12Features an optional structure containing the 1.2 features to be enabled.
+     * @param requiredDevice12Features a ptr to a structure containing the 1.2 features to be enabled, or nullptr.
      *
-     * @param requiredDevice13Features an optional structure containing the 1.3 features to be enabled.
+     * @param requiredDevice13Features a ptr to a structure containing the 1.3 features to be enabled, or nullptr.
+     *
+     * NOTE: the requiredDeviceFeatures structures may have their pNext member modified to create a structure chain.
      *
      * NOTE: A queue family can support both the graphics queue and the present queue. In this case, only one queue will
      * be created from this family, which will be used for both purposes.
@@ -318,10 +323,10 @@ private:
      * @throws a vk::SystemError if the device creation failed.
      */
     void createLogicalDevice(std::span<const char* const> requiredDeviceExtensions,
-                             std::optional<vk::PhysicalDeviceFeatures> requiredDevice10Features,
-                             std::optional<vk::PhysicalDeviceVulkan11Features> requiredDevice11Features,
-                             std::optional<vk::PhysicalDeviceVulkan12Features> requiredDevice12Features,
-                             std::optional<vk::PhysicalDeviceVulkan13Features> requiredDevice13Features);
+                             vk::PhysicalDeviceFeatures* requiredDevice10Features,
+                             vk::PhysicalDeviceVulkan11Features* requiredDevice11Features,
+                             vk::PhysicalDeviceVulkan12Features* requiredDevice12Features,
+                             vk::PhysicalDeviceVulkan13Features* requiredDevice13Features);
 
     /*!
      * Creates a VMA allocator instance.

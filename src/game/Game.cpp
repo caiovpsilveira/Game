@@ -37,7 +37,7 @@ Game::Game()
     createInfo.enableValidationLayersIfSupported = true;
     createInfo.enableDebugMessengerIfSupported = true;
     createInfo.window = m_window;
-    createInfo.requiredDevice13Features = features13;
+    createInfo.requiredDevice13Features = &features13;
     m_vkContext = core::VulkanGraphicsContext(createInfo);
 
     createGraphicsPipeline();
