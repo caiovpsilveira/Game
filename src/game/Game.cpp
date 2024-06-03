@@ -1,6 +1,6 @@
 #include "Game.hpp"
 
-#include "core/Utils.hpp"
+#include "core/GraphicsPipelineBuilder.hpp"
 
 // libs
 #include <SDL.h>
@@ -9,6 +9,7 @@
 #include <vulkan/vulkan.hpp>
 
 // std
+#include <cstdint>
 #include <vector>
 
 namespace game
@@ -50,8 +51,9 @@ Game::~Game() noexcept
 
 void Game::createGraphicsPipeline()
 {
-    auto vertShaderCode = core::utils::readFile("../shaders/simple_shader.vert.spv");
-    auto fragShaderCode = core::utils::readFile("../shaders/simple_shader.frag.spv");
+    core::GraphicsPipelineBuilder builder(m_vkContext.device());
+
+    builder.setShaders("../shaders/simple_shader.vert.spv", "../shaders/simple_shader.frag.spv");
 }
 
 void Game::run()

@@ -2,6 +2,7 @@ target_sources(voxel_game PRIVATE
                core/Logger.cpp
                core/Utils.cpp
                core/VulkanGraphicsContext.cpp
+               core/GraphicsPipelineBuilder.cpp
                game/Game.cpp
                main.cpp)
 

@@ -19,6 +19,8 @@ bool containsExtension(std::span<const vk::ExtensionProperties> extensionsProper
 
 std::vector<char> readFile(const std::filesystem::path& path);
 
+vk::ShaderModule createShaderModule(vk::Device device, const std::vector<char>& code);
+
 }   // namespace core::utils
 
 #endif

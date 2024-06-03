@@ -178,6 +178,9 @@ public:
 
     ~VulkanGraphicsContext() noexcept;
 
+public:
+    vk::Device device() const noexcept { return m_device; }
+
     /*!
      * Sets the present mode to be used in the next @ref recreateSwapchain call.
      * NOTE: if the present mode is not supported, @ref recreateSwapchain will fail.

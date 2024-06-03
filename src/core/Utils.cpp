@@ -1,6 +1,7 @@
 #include "Utils.hpp"
 
 // std
+#include <cstdint>
 #include <fstream>
 
 namespace core::utils
@@ -36,6 +37,18 @@ std::vector<char> readFile(const std::filesystem::path& path)
     file.close();
 
     return buffer;
+}
+
+vk::ShaderModule createShaderModule(vk::Device device, const std::vector<char>& code)
+{
+    // vector default allocator ensures that data satisfies the alignment requirements of uint32_t
+    vk::ShaderModuleCreateInfo createInfo {.sType = vk::StructureType::eShaderModuleCreateInfo,
+                                           .pNext = nullptr,
+                                           .flags = {},
+                                           .codeSize = code.size(),
+                                           .pCode = reinterpret_cast<const uint32_t*>(code.data())};
+
+    return device.createShaderModule(createInfo);
 }
 
 }   // namespace core::utils
