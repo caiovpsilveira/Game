@@ -6,6 +6,7 @@
 
 // std
 #include <span>
+#include <vulkan/vulkan_structs.hpp>
 
 struct SDL_Window;
 struct VmaAllocator_T;
@@ -183,6 +184,8 @@ public:
 
 public:
     vk::Device device() const noexcept { return m_device; }
+
+    vk::Extent2D swapchainExtent() const noexcept { return m_currentSwapchainExtent; }
 
     /*!
      * Sets the present mode to be used in the next @ref recreateSwapchain call.
@@ -380,6 +383,7 @@ private:
     VmaAllocator_T* m_allocator = nullptr;
     vk::PresentModeKHR m_currentSwapchainPresentMode;
     vk::SurfaceFormatKHR m_currentSwapchainSurfaceFormat;
+    vk::Extent2D m_currentSwapchainExtent;
     vk::SwapchainKHR m_swapchain = nullptr;
 };
 
