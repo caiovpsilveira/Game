@@ -11,7 +11,7 @@ target_compile_definitions(voxel_game PRIVATE
                            VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1
                            VMA_STATIC_VULKAN_FUNCTIONS=0
                            VMA_DYNAMIC_VULKAN_FUNCTIONS=1
-                           # Below are my preferences. I'm not using, might remove to compile faster
+                           # Below are my preferences. Since I'm not using, might as well remove to compile faster
                            VULKAN_HPP_NO_SMART_HANDLE
                            VULKAN_HPP_NO_CONSTRUCTORS
                            VULKAN_HPP_NO_TO_STRING # can still be used by including vulkan_to_string.hpp
