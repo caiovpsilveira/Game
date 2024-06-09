@@ -1,6 +1,6 @@
 # Unnamed game
 
-This is my attempt to make a game to learn Vulkan.
+This is my attempt to make a game and also learn Vulkan.
 
 I'm using C++20 because of designated initializers, std::span, std::format, std::ranges and other nice features from C++20.
 
