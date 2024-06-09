@@ -1,6 +1,6 @@
-# Voxel game
+# Unnamed game
 
-This is my attempt to make a voxel game to learn Vulkan.
+This is my attempt to make a game to learn Vulkan.
 
 I'm using C++20 because of designated initializers, std::span, std::format, std::ranges and other nice features from C++20.
 
