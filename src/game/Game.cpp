@@ -45,6 +45,7 @@ Game::Game()
 
 Game::~Game() noexcept
 {
+    m_vkContext.device().destroyPipeline(m_graphicsPipeline);
     SDL_DestroyWindow(m_window);
     SDL_Quit();
 }
@@ -54,6 +55,7 @@ void Game::createGraphicsPipeline()
     core::GraphicsPipelineBuilder builder(m_vkContext.device());
 
     builder.setShaders("../shaders/simple_shader.vert.spv", "../shaders/simple_shader.frag.spv");
+    m_graphicsPipeline = builder.build(m_vkContext.swapchainColorFormat());
 }
 
 void Game::run()

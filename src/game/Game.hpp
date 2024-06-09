@@ -30,6 +30,7 @@ private:
 private:
     SDL_Window* m_window;
     core::VulkanGraphicsContext m_vkContext;
+    vk::Pipeline m_graphicsPipeline = nullptr;
 };
 
 }   // namespace game

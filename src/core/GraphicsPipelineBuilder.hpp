@@ -27,6 +27,8 @@ public:
     void setShaders(const std::filesystem::path& vertexShaderSourcePath,
                     const std::filesystem::path& fragmentShaderSourcePath);
 
+    vk::Pipeline build(vk::Format swapchainColorFormat);
+
 private:
     vk::Device m_device;   // not owned
     vk::ShaderModule m_vertShaderModule = nullptr;
