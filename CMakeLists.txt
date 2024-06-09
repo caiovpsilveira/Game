@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(voxel_game VERSION 0.0.1 LANGUAGES CXX)
+project(game VERSION 0.0.1 LANGUAGES CXX)
 
 if (${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
     message(FATAL_ERROR "In-source builds are not allowed.")
@@ -15,10 +15,10 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -Wno-nullability-extension")
 endif()
 
-add_executable(voxel_game)
+add_executable(game)
 
 add_subdirectory(src)
 add_subdirectory(shaders)
 add_subdirectory(third_party)
 
-add_dependencies(voxel_game shaders)
+add_dependencies(game shaders)
