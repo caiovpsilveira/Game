@@ -44,17 +44,4 @@ void GraphicsPipelineBuilder::setShaders(const std::filesystem::path& vertexShad
     //                                                        .pSpecializationInfo = nullptr};
 }
 
-void GraphicsPipelineBuilder::setViewportAndScissor(const vk::Extent2D& swapchainExtent) noexcept
-{
-    m_viewport.x = 0.f;
-    m_viewport.y = 0.f;
-    m_viewport.width = static_cast<float>(swapchainExtent.width);
-    m_viewport.height = static_cast<float>(swapchainExtent.height);
-    m_viewport.minDepth = 0.f;
-    m_viewport.maxDepth = 1.f;
-
-    m_scissor.extent = {0, 0};
-    m_scissor.extent = swapchainExtent;
-}
-
 }   // namespace core

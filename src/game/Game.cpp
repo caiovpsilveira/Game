@@ -54,7 +54,6 @@ void Game::createGraphicsPipeline()
     core::GraphicsPipelineBuilder builder(m_vkContext.device());
 
     builder.setShaders("../shaders/simple_shader.vert.spv", "../shaders/simple_shader.frag.spv");
-    builder.setViewportAndScissor(m_vkContext.swapchainExtent());
 }
 
 void Game::run()
