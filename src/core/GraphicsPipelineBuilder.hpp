@@ -15,7 +15,7 @@ class GraphicsPipelineBuilder
 public:
     explicit GraphicsPipelineBuilder(vk::Device device) noexcept;
 
-    ~GraphicsPipelineBuilder() noexcept;
+    ~GraphicsPipelineBuilder() noexcept = default;
 
     GraphicsPipelineBuilder(const GraphicsPipelineBuilder&) = delete;
     GraphicsPipelineBuilder& operator=(const GraphicsPipelineBuilder&) = delete;
@@ -27,12 +27,12 @@ public:
     void setShaders(const std::filesystem::path& vertexShaderSourcePath,
                     const std::filesystem::path& fragmentShaderSourcePath);
 
-    vk::Pipeline build(vk::Format swapchainColorFormat);
+    vk::UniquePipeline build(vk::Format swapchainColorFormat);
 
 private:
     vk::Device m_device;   // not owned
-    vk::ShaderModule m_vertShaderModule = nullptr;
-    vk::ShaderModule m_fragShaderModule = nullptr;
+    vk::UniqueShaderModule m_vertShaderModule;
+    vk::UniqueShaderModule m_fragShaderModule;
 };
 
 }   // namespace core

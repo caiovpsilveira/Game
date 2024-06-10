@@ -13,31 +13,24 @@ GraphicsPipelineBuilder::GraphicsPipelineBuilder(vk::Device device) noexcept
     : m_device(device)
 {}
 
-GraphicsPipelineBuilder::~GraphicsPipelineBuilder() noexcept
-{
-    // safe to call with nullptr, which these are initialized
-    m_device.destroyShaderModule(m_vertShaderModule);
-    m_device.destroyShaderModule(m_fragShaderModule);
-}
-
 void GraphicsPipelineBuilder::setShaders(const std::filesystem::path& vertexShaderSourcePath,
                                          const std::filesystem::path& fragmentShaderSourcePath)
 {
     auto vertShaderCode = utils::readFile(vertexShaderSourcePath);
     auto fragShaderCode = utils::readFile(fragmentShaderSourcePath);
 
-    m_vertShaderModule = utils::createShaderModule(m_device, vertShaderCode);
-    m_fragShaderModule = utils::createShaderModule(m_device, fragShaderCode);
+    m_vertShaderModule = utils::createShaderModuleUnique(m_device, vertShaderCode);
+    m_fragShaderModule = utils::createShaderModuleUnique(m_device, fragShaderCode);
 }
 
-vk::Pipeline GraphicsPipelineBuilder::build(vk::Format swapchainColorFormat)
+vk::UniquePipeline GraphicsPipelineBuilder::build(vk::Format swapchainColorFormat)
 {
     // Shaders
     vk::PipelineShaderStageCreateInfo vertShaderStageInfo {.sType = vk::StructureType::ePipelineShaderStageCreateInfo,
                                                            .pNext = nullptr,
                                                            .flags = {},
                                                            .stage = vk::ShaderStageFlagBits::eVertex,
-                                                           .module = m_vertShaderModule,
+                                                           .module = *m_vertShaderModule,
                                                            .pName = "main",
                                                            .pSpecializationInfo = nullptr};
 
@@ -45,7 +38,7 @@ vk::Pipeline GraphicsPipelineBuilder::build(vk::Format swapchainColorFormat)
                                                            .pNext = nullptr,
                                                            .flags = {},
                                                            .stage = vk::ShaderStageFlagBits::eFragment,
-                                                           .module = m_fragShaderModule,
+                                                           .module = *m_fragShaderModule,
                                                            .pName = "main",
                                                            .pSpecializationInfo = nullptr};
 
@@ -157,7 +150,7 @@ vk::Pipeline GraphicsPipelineBuilder::build(vk::Format swapchainColorFormat)
                                                            .pushConstantRangeCount = 0,
                                                            .pPushConstantRanges = nullptr};
 
-    vk::PipelineLayout pipelineLayout = m_device.createPipelineLayout(pipelineLayoutCreateInfo);
+    vk::UniquePipelineLayout pipelineLayout = m_device.createPipelineLayoutUnique(pipelineLayoutCreateInfo);
 
     // Graphics pipeline
     vk::GraphicsPipelineCreateInfo pipelineCreateInfo {.sType = vk::StructureType::eGraphicsPipelineCreateInfo,
@@ -174,22 +167,21 @@ vk::Pipeline GraphicsPipelineBuilder::build(vk::Format swapchainColorFormat)
                                                        .pDepthStencilState = nullptr,
                                                        .pColorBlendState = &colorBlendStateCreateInfo,
                                                        .pDynamicState = &dynamicStateCreateInfo,
-                                                       .layout = pipelineLayout,
+                                                       .layout = *pipelineLayout,
                                                        .renderPass = nullptr,
                                                        .subpass = 0,
                                                        .basePipelineHandle = nullptr,
                                                        .basePipelineIndex = -1};
 
-    auto res = m_device.createGraphicsPipeline(nullptr, pipelineCreateInfo);
-    m_device.destroyPipelineLayout(pipelineLayout);
+    auto res = m_device.createGraphicsPipelineUnique(nullptr, pipelineCreateInfo);
 
     if (res.result == vk::Result::eSuccess) {
-        return res.value;
+        return std::move(res.value);
     }
 
     FATAL_FMT("Graphics pipeline failed with result {}\n", vk::to_string(res.result));
     assert(0);
-    return nullptr;
+    return vk::UniquePipeline();
 }
 
 }   // namespace core

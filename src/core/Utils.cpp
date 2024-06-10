@@ -39,7 +39,7 @@ std::vector<char> readFile(const std::filesystem::path& path)
     return buffer;
 }
 
-vk::ShaderModule createShaderModule(vk::Device device, const std::vector<char>& code)
+vk::UniqueShaderModule createShaderModuleUnique(vk::Device device, const std::vector<char>& code)
 {
     // vector default allocator ensures that data satisfies the alignment requirements of uint32_t
     vk::ShaderModuleCreateInfo createInfo {.sType = vk::StructureType::eShaderModuleCreateInfo,
@@ -48,7 +48,7 @@ vk::ShaderModule createShaderModule(vk::Device device, const std::vector<char>& 
                                            .codeSize = code.size(),
                                            .pCode = reinterpret_cast<const uint32_t*>(code.data())};
 
-    return device.createShaderModule(createInfo);
+    return device.createShaderModuleUnique(createInfo);
 }
 
 }   // namespace core::utils

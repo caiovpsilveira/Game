@@ -1,12 +1,11 @@
 #include "Game.hpp"
 
 #include "core/GraphicsPipelineBuilder.hpp"
+#include "core/Logger.hpp"
 
 // libs
 #include <SDL.h>
 #include <SDL_vulkan.h>
-#include <vk_mem_alloc.h>
-#include <vulkan/vulkan.hpp>
 
 // std
 #include <cstdint>
@@ -41,11 +40,11 @@ Game::Game()
     m_vkContext = core::VulkanGraphicsContext(createInfo);
 
     createGraphicsPipeline();
+    DEBUG("Successfully created graphics pipeline\n");
 }
 
 Game::~Game() noexcept
 {
-    m_vkContext.device().destroyPipeline(m_graphicsPipeline);
     SDL_DestroyWindow(m_window);
     SDL_Quit();
 }
