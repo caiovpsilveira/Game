@@ -1,12 +1,13 @@
 #ifndef CORE_VULKAN_GRAPHICS_CONTEXT_H
 #define CORE_VULKAN_GRAPHICS_CONTEXT_H
 
+#include "VmaAllocatorUnique.hpp"
+
 // libs
 #include <vulkan/vulkan.hpp>
 
 // std
 #include <span>
-#include <vulkan/vulkan_structs.hpp>
 
 struct SDL_Window;
 struct VmaAllocator_T;
@@ -177,13 +178,13 @@ public:
     VulkanGraphicsContext(const VulkanGraphicsContext&) = delete;
     VulkanGraphicsContext& operator=(const VulkanGraphicsContext&) = delete;
 
-    VulkanGraphicsContext(VulkanGraphicsContext&&) noexcept;
-    VulkanGraphicsContext& operator=(VulkanGraphicsContext&&) noexcept;
+    VulkanGraphicsContext(VulkanGraphicsContext&&) noexcept = default;
+    VulkanGraphicsContext& operator=(VulkanGraphicsContext&&) noexcept = default;
 
-    ~VulkanGraphicsContext() noexcept;
+    ~VulkanGraphicsContext() noexcept = default;
 
 public:
-    vk::Device device() const noexcept { return m_device; }
+    vk::Device device() const noexcept { return m_device.get(); }
 
     vk::Format swapchainColorFormat() const noexcept { return m_currentSwapchainSurfaceFormat.format; }
     vk::Extent2D swapchainExtent() const noexcept { return m_currentSwapchainExtent; }
@@ -362,30 +363,20 @@ private:
                          PFN_presentModeKHRselector pfnPresentModeKHRselector,
                          PFN_surfaceFormatKHRselector pfnSurfaceFormatKHRselector);
 
-    /*!
-     * Frees the acquired resources.
-     */
-    void cleanup() noexcept;
-
 private:
-    // PhysicalDevice is owned by instance and Queues are owned by the device
-    // We shouldn't need to initialize them, and a copy on move should be enough
-    // instead of exchange/swap, but just to be safe and catch something off on assertions
-    // they are initialized as nullptr
-
-    vk::Instance m_instance = nullptr;
-    vk::DebugUtilsMessengerEXT m_debugMessenger = nullptr;
-    vk::SurfaceKHR m_surface = nullptr;
-    vk::PhysicalDevice m_physicalDevice = nullptr;
+    vk::UniqueInstance m_instance;
+    vk::UniqueDebugUtilsMessengerEXT m_debugMessenger;
+    vk::UniqueSurfaceKHR m_surface;
+    vk::PhysicalDevice m_physicalDevice;
     QueueFamiliesIndices m_queueFamiliesIndices;
-    vk::Device m_device = nullptr;
-    vk::Queue m_graphicsQueue = nullptr;
-    vk::Queue m_presentQueue = nullptr;
-    VmaAllocator_T* m_allocator = nullptr;
+    vk::UniqueDevice m_device;
+    vk::Queue m_graphicsQueue;
+    vk::Queue m_presentQueue;
+    VmaAllocatorUnique m_allocator;
     vk::PresentModeKHR m_currentSwapchainPresentMode;
     vk::SurfaceFormatKHR m_currentSwapchainSurfaceFormat;
     vk::Extent2D m_currentSwapchainExtent;
-    vk::SwapchainKHR m_swapchain = nullptr;
+    vk::UniqueSwapchainKHR m_swapchain;
 };
 
 }   // namespace core

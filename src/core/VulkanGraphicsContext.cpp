@@ -9,8 +9,6 @@
 #include <SDL.h>
 #include <SDL_video.h>
 #include <SDL_vulkan.h>
-#include <vk_mem_alloc.h>
-#include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_to_string.hpp>
 
 // std
@@ -20,7 +18,6 @@
 #include <limits>
 #include <optional>
 #include <span>
-#include <utility>
 #include <vector>
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
@@ -118,93 +115,47 @@ VulkanGraphicsContext::VulkanGraphicsContext(const VulkanGraphicsContextCreateIn
         }
     }
 
-    try {
-        createInstanceAndDebug(createInfo.vulkanApiVersion,
-                               createInfo.requiredInstanceExtensions,
-                               createInfo.enableValidationLayersIfSupported,
-                               createInfo.enableDebugMessengerIfSupported);
+    createInstanceAndDebug(createInfo.vulkanApiVersion,
+                           createInfo.requiredInstanceExtensions,
+                           createInfo.enableValidationLayersIfSupported,
+                           createInfo.enableDebugMessengerIfSupported);
 
-        SDL_bool SDLRes =
-            SDL_Vulkan_CreateSurface(createInfo.window, m_instance, reinterpret_cast<VkSurfaceKHR*>(&m_surface));
+    {
+        VkSurfaceKHR tempSurface;
+        SDL_bool SDLRes = SDL_Vulkan_CreateSurface(createInfo.window, *m_instance, &tempSurface);
         if (SDLRes != SDL_TRUE) {
             // To be consistent with vulkan.hpp, throw a vk::SystemError
             throw vk::UnknownError(SDL_GetError());
         }
+        m_surface = vk::UniqueSurfaceKHR(tempSurface, *m_instance);
         DEBUG("Successfully created surface\n");
-
-        searchPhysicalDevice(createInfo.requiredDeviceExtensions,
-                             createInfo.requiredDevice10Features,
-                             createInfo.requiredDevice11Features,
-                             createInfo.requiredDevice12Features,
-                             createInfo.requiredDevice13Features);
-
-        createLogicalDevice(createInfo.requiredDeviceExtensions,
-                            createInfo.requiredDevice10Features,
-                            createInfo.requiredDevice11Features,
-                            createInfo.requiredDevice12Features,
-                            createInfo.requiredDevice13Features);
-
-        createAllocator(createInfo.vulkanApiVersion);
-
-        createSwapchain(createInfo.window,
-                        createInfo.pfnPresentModeKHRselector,
-                        createInfo.pfnSurfaceFormatKHRselector);
-
-        assert(m_instance);
-        // assert(m_debugMessenger); // Allowed, can be nullptr if debug is disabled / not supported
-        assert(m_surface);
-        assert(m_physicalDevice);
-        assert(m_device);
-        assert(m_graphicsQueue);
-        assert(m_presentQueue);
-        assert(m_allocator);
-        assert(m_swapchain);
-    } catch (...) {
-        cleanup();
-        FATAL("VulkanGraphicsContext creation failed\n");
-        throw;
     }
-}
 
-VulkanGraphicsContext::VulkanGraphicsContext(VulkanGraphicsContext&& rhs) noexcept
-    : m_instance(std::exchange(rhs.m_instance, nullptr))
-    , m_debugMessenger(std::exchange(rhs.m_debugMessenger, nullptr))
-    , m_surface(std::exchange(rhs.m_surface, nullptr))
-    , m_physicalDevice(std::exchange(rhs.m_physicalDevice, nullptr))
-    , m_queueFamiliesIndices(rhs.m_queueFamiliesIndices)
-    , m_device(std::exchange(rhs.m_device, nullptr))
-    , m_graphicsQueue(std::exchange(rhs.m_graphicsQueue, nullptr))
-    , m_presentQueue(std::exchange(rhs.m_presentQueue, nullptr))
-    , m_allocator(std::exchange(rhs.m_allocator, nullptr))
-    , m_currentSwapchainPresentMode(rhs.m_currentSwapchainPresentMode)
-    , m_currentSwapchainSurfaceFormat(rhs.m_currentSwapchainSurfaceFormat)
-    , m_currentSwapchainExtent(rhs.m_currentSwapchainExtent)
-    , m_swapchain(std::exchange(rhs.m_swapchain, nullptr))
-{}
+    searchPhysicalDevice(createInfo.requiredDeviceExtensions,
+                         createInfo.requiredDevice10Features,
+                         createInfo.requiredDevice11Features,
+                         createInfo.requiredDevice12Features,
+                         createInfo.requiredDevice13Features);
 
-VulkanGraphicsContext& VulkanGraphicsContext::operator=(VulkanGraphicsContext&& rhs) noexcept
-{
-    if (this != &rhs) {
-        std::swap(m_instance, rhs.m_instance);
-        std::swap(m_debugMessenger, rhs.m_debugMessenger);
-        std::swap(m_surface, rhs.m_surface);
-        std::swap(m_physicalDevice, rhs.m_physicalDevice);
-        m_queueFamiliesIndices = rhs.m_queueFamiliesIndices;
-        std::swap(m_device, rhs.m_device);
-        std::swap(m_graphicsQueue, rhs.m_graphicsQueue);
-        std::swap(m_presentQueue, rhs.m_presentQueue);
-        std::swap(m_allocator, rhs.m_allocator);
-        m_currentSwapchainPresentMode = rhs.m_currentSwapchainPresentMode;
-        m_currentSwapchainSurfaceFormat = rhs.m_currentSwapchainSurfaceFormat;
-        m_currentSwapchainExtent = rhs.m_currentSwapchainExtent;
-        std::swap(m_swapchain, rhs.m_swapchain);
-    }
-    return *this;
-}
+    createLogicalDevice(createInfo.requiredDeviceExtensions,
+                        createInfo.requiredDevice10Features,
+                        createInfo.requiredDevice11Features,
+                        createInfo.requiredDevice12Features,
+                        createInfo.requiredDevice13Features);
 
-VulkanGraphicsContext::~VulkanGraphicsContext() noexcept
-{
-    cleanup();
+    createAllocator(createInfo.vulkanApiVersion);
+
+    createSwapchain(createInfo.window, createInfo.pfnPresentModeKHRselector, createInfo.pfnSurfaceFormatKHRselector);
+
+    assert(m_instance);
+    // assert(m_debugMessenger); // Allowed, can be nullptr if debug is disabled / not supported
+    assert(m_surface);
+    assert(m_physicalDevice);
+    assert(m_device);
+    assert(m_graphicsQueue);
+    assert(m_presentQueue);
+    assert(m_allocator);
+    assert(m_swapchain);
 }
 
 void VulkanGraphicsContext::createInstanceAndDebug(uint32_t vulkanApiVersion,
@@ -264,12 +215,12 @@ void VulkanGraphicsContext::createInstanceAndDebug(uint32_t vulkanApiVersion,
                                                .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
                                                .ppEnabledExtensionNames = extensions.data()};
 
-    m_instance = vk::createInstance(instanceCreateInfo);
+    m_instance = vk::createInstanceUnique(instanceCreateInfo);
     DEBUG("Successfully created instance\n");
-    VULKAN_HPP_DEFAULT_DISPATCHER.init(m_instance);
+    VULKAN_HPP_DEFAULT_DISPATCHER.init(*m_instance);
 
     if (useDebugMessenger) {
-        m_debugMessenger = m_instance.createDebugUtilsMessengerEXT(debugMessengerCreateInfo);
+        m_debugMessenger = m_instance->createDebugUtilsMessengerEXTUnique(debugMessengerCreateInfo);
         DEBUG("Successfully created debug messenger\n");
     }
 }
@@ -283,7 +234,7 @@ void VulkanGraphicsContext::searchPhysicalDevice(std::span<const char* const> re
     // TODO: improve physical device selection.
     // Currently selecting the first one with graphicsQueueFamily + presentQueueFamily + swapchainSupport
 
-    auto physicalDevices = m_instance.enumeratePhysicalDevices();
+    auto physicalDevices = m_instance->enumeratePhysicalDevices();
 
     for (const auto& pd : physicalDevices) {
         auto pdProperties = pd.getProperties();
@@ -299,7 +250,7 @@ void VulkanGraphicsContext::searchPhysicalDevice(std::span<const char* const> re
             if (qp.queueFlags & vk::QueueFlagBits::eGraphics) {
                 graphicsFamilyIndex = i;
             }
-            if (pd.getSurfaceSupportKHR(i, m_surface)) {
+            if (pd.getSurfaceSupportKHR(i, *m_surface)) {
                 presentFamilyIndex = i;
             }
             if (graphicsFamilyIndex && presentFamilyIndex) {
@@ -595,12 +546,12 @@ void VulkanGraphicsContext::createLogicalDevice(std::span<const char* const> req
                                            .ppEnabledExtensionNames = requiredDeviceExtensions.data(),
                                            .pEnabledFeatures = requiredDevice10Features};
 
-    m_device = m_physicalDevice.createDevice(deviceCreateInfo);
+    m_device = m_physicalDevice.createDeviceUnique(deviceCreateInfo);
     DEBUG("Successfully created logical device\n");
-    VULKAN_HPP_DEFAULT_DISPATCHER.init(m_device);
+    VULKAN_HPP_DEFAULT_DISPATCHER.init(*m_device);
 
-    m_graphicsQueue = m_device.getQueue(m_queueFamiliesIndices.graphicsFamilyIndex, 0);
-    m_presentQueue = m_device.getQueue(m_queueFamiliesIndices.presentFamilyIndex, 0);
+    m_graphicsQueue = m_device->getQueue(m_queueFamiliesIndices.graphicsFamilyIndex, 0);
+    m_presentQueue = m_device->getQueue(m_queueFamiliesIndices.presentFamilyIndex, 0);
 }
 
 void VulkanGraphicsContext::createAllocator(uint32_t vulkanApiVersion)
@@ -613,18 +564,17 @@ void VulkanGraphicsContext::createAllocator(uint32_t vulkanApiVersion)
 
     VmaAllocatorCreateInfo allocatorCreateInfo {.flags = 0,
                                                 .physicalDevice = m_physicalDevice,
-                                                .device = m_device,
+                                                .device = *m_device,
                                                 .preferredLargeHeapBlockSize = 0,
                                                 .pAllocationCallbacks = nullptr,
                                                 .pDeviceMemoryCallbacks = nullptr,
                                                 .pHeapSizeLimit = nullptr,
                                                 .pVulkanFunctions = &vulkanFunctions,
-                                                .instance = m_instance,
+                                                .instance = *m_instance,
                                                 .vulkanApiVersion = vulkanApiVersion,
                                                 .pTypeExternalMemoryHandleTypes = nullptr};
 
-    vk::Result result = static_cast<vk::Result>(vmaCreateAllocator(&allocatorCreateInfo, &m_allocator));
-    vk::detail::resultCheck(result, "vmaCreateAllocator");
+    m_allocator = VmaAllocatorUnique(allocatorCreateInfo);
     DEBUG("Successfully created vmaAllocator\n");
 }
 
@@ -639,13 +589,13 @@ void VulkanGraphicsContext::createSwapchain(SDL_Window* window,
 
     // Select the default values for the present mode and SurfaceFormatKHR
     if (pfnPresentModeKHRselector != nullptr) {
-        auto presentModes = m_physicalDevice.getSurfacePresentModesKHR(m_surface);
+        auto presentModes = m_physicalDevice.getSurfacePresentModesKHR(*m_surface);
         m_currentSwapchainPresentMode = pfnPresentModeKHRselector(presentModes);
     } else {
         m_currentSwapchainPresentMode = vk::PresentModeKHR::eFifo;
     }
 
-    auto surfaceFormats = m_physicalDevice.getSurfaceFormatsKHR(m_surface);
+    auto surfaceFormats = m_physicalDevice.getSurfaceFormatsKHR(*m_surface);
     assert(surfaceFormats.size() > 0);
     m_currentSwapchainSurfaceFormat =
         pfnSurfaceFormatKHRselector ? pfnSurfaceFormatKHRselector(surfaceFormats) : surfaceFormats[0];
@@ -660,7 +610,7 @@ void VulkanGraphicsContext::createSwapchain(SDL_Window* window,
 
 void VulkanGraphicsContext::recreateSwapchain(SDL_Window* window)
 {
-    auto surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(m_surface);
+    auto surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(*m_surface);
 
     vk::Extent2D newSwapchainExtent;
     if (surfaceCapabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
@@ -703,11 +653,11 @@ void VulkanGraphicsContext::recreateSwapchain(SDL_Window* window)
 
     // on the first call, this will create the swapchain, as m_swapchain is initialized as nullptr
     // otherwise pass it as old swapchain
-    vk::SwapchainKHR oldSwapchain = m_swapchain;
+    vk::SwapchainKHR oldSwapchain = *m_swapchain;
     vk::SwapchainCreateInfoKHR swapchainCreateInfo {.sType = vk::StructureType::eSwapchainCreateInfoKHR,
                                                     .pNext = nullptr,
                                                     .flags = {},
-                                                    .surface = m_surface,
+                                                    .surface = *m_surface,
                                                     .minImageCount = imageCount,
                                                     .imageFormat = m_currentSwapchainSurfaceFormat.format,
                                                     .imageColorSpace = m_currentSwapchainSurfaceFormat.colorSpace,
@@ -723,49 +673,15 @@ void VulkanGraphicsContext::recreateSwapchain(SDL_Window* window)
                                                     .clipped = vk::True,
                                                     .oldSwapchain = oldSwapchain};
 
-    m_swapchain = m_device.createSwapchainKHR(swapchainCreateInfo);
+    // We could keep the retired old swapchain to try to present already retrieved images, but is this worth it?
+    // in which scenarios would need a Swapchain recreation AND have the oldSwapchain NOT entered a state that
+    // causes VK_ERROR_OUT_OF_DATE_KHR to be returned?
+    // furthermore, does applications frequently acquire more than 1 image before presenting it?
+    // Unique Handle will destroy it
+
+    m_swapchain = m_device->createSwapchainKHRUnique(swapchainCreateInfo);
     DEBUG_FMT("Successfully {} swapchain\n", oldSwapchain == nullptr ? "created" : "re-created");
-    if (oldSwapchain != nullptr) {
-        // We could keep the retired old swapchain to try to present already retrieved images, but is this worth it?
-        // in which scenarios would need a Swapchain recreation AND have the oldSwapchain NOT entered a state that
-        // causes VK_ERROR_OUT_OF_DATE_KHR to be returned?
-        // furthermore, does applications frequently acquire more than 1 image before presenting it?
-        m_device.destroySwapchainKHR(oldSwapchain);
-    }
     m_currentSwapchainExtent = newSwapchainExtent;
-}
-
-void VulkanGraphicsContext::cleanup() noexcept
-{
-    // This is reused both on the destructor and to cleanup resouce aquired during the constructor, if something failed.
-    // For the destructor, all members must be in a valid state, otherwise the constructor must have thrown
-
-    if (m_device) {
-        m_device.waitIdle();
-    }
-    if (m_swapchain) {
-        assert(m_device);
-        m_device.destroySwapchainKHR(m_swapchain);
-    }
-    if (m_allocator) {
-        vmaDestroyAllocator(m_allocator);
-    }
-    // Queues are owned by device
-    if (m_device) {
-        m_device.destroy();
-    }
-    // PhysicalDevice is owned by the instance
-    if (m_surface) {
-        assert(m_instance);
-        m_instance.destroySurfaceKHR(m_surface);
-    }
-    if (m_debugMessenger) {
-        assert(m_instance);
-        m_instance.destroyDebugUtilsMessengerEXT(m_debugMessenger);
-    }
-    if (m_instance) {
-        m_instance.destroy();
-    }
 }
 
 }   // namespace core
