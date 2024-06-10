@@ -1,6 +1,7 @@
 #ifndef GAME_GAME_HPP
 #define GAME_GAME_HPP
 
+#include "core/Types.hpp"
 #include "core/VulkanGraphicsContext.hpp"
 
 struct SDL_Window;
@@ -25,12 +26,16 @@ public:
     void run();
 
 private:
+    static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+
     void createGraphicsPipeline();
+    void initFrameData();
 
 private:
     SDL_Window* m_window;
     core::VulkanGraphicsContext m_vkContext;
     vk::UniquePipeline m_graphicsPipeline;
+    core::FrameData m_frameData[MAX_FRAMES_IN_FLIGHT];
 };
 
 }   // namespace game

@@ -41,6 +41,8 @@ Game::Game()
 
     createGraphicsPipeline();
     DEBUG("Successfully created graphics pipeline\n");
+    initFrameData();
+    DEBUG("Successfully created frame data\n");
 }
 
 Game::~Game() noexcept
@@ -55,6 +57,39 @@ void Game::createGraphicsPipeline()
 
     builder.setShaders("../shaders/simple_shader.vert.spv", "../shaders/simple_shader.frag.spv");
     m_graphicsPipeline = builder.build(m_vkContext.swapchainColorFormat());
+}
+
+void Game::initFrameData()
+{
+    vk::CommandPoolCreateInfo commandPoolCreateInfo {.sType = vk::StructureType::eCommandPoolCreateInfo,
+                                                     .pNext = nullptr,
+                                                     .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+                                                     .queueFamilyIndex = m_vkContext.graphicsQueueFamilyIndex()};
+
+    vk::CommandBufferAllocateInfo commandBufferAllocateInfo {.sType = vk::StructureType::eCommandBufferAllocateInfo,
+                                                             .pNext = nullptr,
+                                                             .commandPool = nullptr,
+                                                             .level = vk::CommandBufferLevel::ePrimary,
+                                                             .commandBufferCount = 1};
+
+    vk::SemaphoreCreateInfo semaphoreCreateInfo {.sType = vk::StructureType::eSemaphoreCreateInfo,
+                                                 .pNext = nullptr,
+                                                 .flags = {}};
+
+    vk::FenceCreateInfo fenceCreateInfo {.sType = vk::StructureType::eFenceCreateInfo,
+                                         .pNext = nullptr,
+                                         .flags = vk::FenceCreateFlagBits::eSignaled};
+
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        m_frameData[i].commandPool = m_vkContext.device().createCommandPoolUnique(commandPoolCreateInfo);
+        commandBufferAllocateInfo.commandPool = *m_frameData[i].commandPool;
+        m_frameData[i].commandBuffer =
+            std::move(m_vkContext.device().allocateCommandBuffersUnique(commandBufferAllocateInfo)[0]);
+
+        m_frameData[i].swapchainSemaphore = m_vkContext.device().createSemaphoreUnique(semaphoreCreateInfo);
+        m_frameData[i].renderSemaphore = m_vkContext.device().createSemaphoreUnique(semaphoreCreateInfo);
+        m_frameData[i].renderFence = m_vkContext.device().createFenceUnique(fenceCreateInfo);
+    }
 }
 
 void Game::run()

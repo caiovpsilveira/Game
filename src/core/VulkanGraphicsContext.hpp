@@ -185,6 +185,7 @@ public:
 
 public:
     vk::Device device() const noexcept { return m_device.get(); }
+    uint32_t graphicsQueueFamilyIndex() const noexcept { return m_queueFamiliesIndices.graphicsFamilyIndex; }
 
     vk::Format swapchainColorFormat() const noexcept { return m_currentSwapchainSurfaceFormat.format; }
     vk::Extent2D swapchainExtent() const noexcept { return m_currentSwapchainExtent; }
