@@ -68,6 +68,7 @@ struct VulkanGraphicsContextCreateInfo {
 
     /*!
      * @param window A valid SDL_window, which MUST have been created with the "SDL_WINDOW_VULKAN" flag.
+     * The window is used to create the Vulkan Surface and to query the drawable extent.
      */
     SDL_Window* window;
 
@@ -221,11 +222,9 @@ public:
      * Re-creates the swapchain, querying the current drawable extent from the window and using the
      * set values for the swapchain present mode and surfaceFormatKHR.
      *
-     * @param window the SDL_window bound to the VkSurface, to query for the drawable extent.
-     *
      * @throws a vk::SystemError if the swapchain recreation failed.
      */
-    void recreateSwapchain(SDL_Window* window);
+    void recreateSwapchain();
 
 private:
     struct QueueFamiliesIndices {
@@ -354,8 +353,6 @@ private:
      * If the device graphics queue family is the same as the present queue family,
      * the image sharing mode is set to eExclusive, otherwise to eConcurrent.
      *
-     * @param window the SDL_window bound to the VkSurface, to query for the drawable extent.
-     *
      * @param pfnPresentModeKHRselector nullptr, or a pointer to a function that will choose the preferred present mode,
      * passing the supported present modes as a parameter.
      * - If this is nullptr, the used present mode will be FIFO, as it's guaranteed to be supported.
@@ -367,11 +364,11 @@ private:
      *
      * @throws a vk::SystemError if the swapchain creation failed.
      */
-    void createSwapchain(SDL_Window* window,
-                         PFN_presentModeKHRselector pfnPresentModeKHRselector,
+    void createSwapchain(PFN_presentModeKHRselector pfnPresentModeKHRselector,
                          PFN_surfaceFormatKHRselector pfnSurfaceFormatKHRselector);
 
 private:
+    SDL_Window* m_window;   // not owned
     vk::UniqueInstance m_instance;
     vk::UniqueDebugUtilsMessengerEXT m_debugMessenger;
     vk::UniqueSurfaceKHR m_surface;

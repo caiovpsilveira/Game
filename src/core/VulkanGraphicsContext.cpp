@@ -91,6 +91,8 @@ VulkanGraphicsContext::VulkanGraphicsContext(const VulkanGraphicsContextCreateIn
     assert(createInfo.window);
     assert(utils::containsExtension(createInfo.requiredDeviceExtensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME));
 
+    m_window = createInfo.window;
+
     VULKAN_HPP_DEFAULT_DISPATCHER.init();   // default dispatcher is noexcept
     {
         // local scope to not misuse instanceVersion with vulkanApiVersion
@@ -145,7 +147,7 @@ VulkanGraphicsContext::VulkanGraphicsContext(const VulkanGraphicsContextCreateIn
 
     createAllocator(createInfo.vulkanApiVersion);
 
-    createSwapchain(createInfo.window, createInfo.pfnPresentModeKHRselector, createInfo.pfnSurfaceFormatKHRselector);
+    createSwapchain(createInfo.pfnPresentModeKHRselector, createInfo.pfnSurfaceFormatKHRselector);
 
     assert(m_instance);
     // assert(m_debugMessenger); // Allowed, can be nullptr if debug is disabled / not supported
@@ -578,8 +580,7 @@ void VulkanGraphicsContext::createAllocator(uint32_t vulkanApiVersion)
     DEBUG("Successfully created vmaAllocator\n");
 }
 
-void VulkanGraphicsContext::createSwapchain(SDL_Window* window,
-                                            PFN_presentModeKHRselector pfnPresentModeKHRselector,
+void VulkanGraphicsContext::createSwapchain(PFN_presentModeKHRselector pfnPresentModeKHRselector,
                                             PFN_surfaceFormatKHRselector pfnSurfaceFormatKHRselector)
 {
     // The Vulkan specs requires VK_KHR_surface extension to support at least VK_PRESENT_MODE_FIFO_KHR present mode
@@ -605,10 +606,10 @@ void VulkanGraphicsContext::createSwapchain(SDL_Window* window,
               vk::to_string(m_currentSwapchainSurfaceFormat.format),
               vk::to_string(m_currentSwapchainSurfaceFormat.colorSpace));
 
-    recreateSwapchain(window);
+    recreateSwapchain();
 }
 
-void VulkanGraphicsContext::recreateSwapchain(SDL_Window* window)
+void VulkanGraphicsContext::recreateSwapchain()
 {
     auto surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(*m_surface);
 
@@ -617,7 +618,13 @@ void VulkanGraphicsContext::recreateSwapchain(SDL_Window* window)
         newSwapchainExtent = surfaceCapabilities.currentExtent;
     } else {
         int w, h;
-        SDL_Vulkan_GetDrawableSize(window, &w, &h);
+        SDL_Vulkan_GetDrawableSize(m_window, &w, &h);
+        // handle minimization
+        while (w == 0 || h == 0) {
+            SDL_Vulkan_GetDrawableSize(m_window, &w, &h);
+            SDL_WaitEvent(nullptr);
+        }
+
         vk::Extent2D actualExtent(static_cast<uint32_t>(w), static_cast<uint32_t>(h));
 
         actualExtent.width = std::clamp(actualExtent.width,
@@ -680,7 +687,7 @@ void VulkanGraphicsContext::recreateSwapchain(SDL_Window* window)
     // Unique Handle will destroy it
 
     m_swapchain = m_device->createSwapchainKHRUnique(swapchainCreateInfo);
-    DEBUG_FMT("Successfully {} swapchain\n", oldSwapchain == nullptr ? "created" : "re-created");
+    TRACE_FMT("Successfully {} swapchain\n", oldSwapchain == nullptr ? "created" : "re-created");
     m_currentSwapchainExtent = newSwapchainExtent;
 
     m_swapchainImages = m_device->getSwapchainImagesKHR(*m_swapchain);
@@ -706,7 +713,7 @@ void VulkanGraphicsContext::recreateSwapchain(SDL_Window* window)
         };
         m_swapchainImageViews[i] = m_device->createImageViewUnique(imageViewCreateInfo);
     }
-    DEBUG("Successfully retrieved swapchain image views\n");
+    TRACE("Successfully retrieved swapchain image views\n");
 }
 
 }   // namespace core

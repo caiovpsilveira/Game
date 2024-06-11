@@ -19,7 +19,7 @@ namespace game
 Game::Game()
 {
     SDL_Init(SDL_INIT_VIDEO);
-    m_window = SDL_CreateWindow("Voxel game", 0, 0, 800, 600, SDL_WINDOW_VULKAN);
+    m_window = SDL_CreateWindow("Voxel game", 0, 0, 800, 600, SDL_WINDOW_RESIZABLE | SDL_WINDOW_VULKAN);
 
     uint32_t count;
     SDL_Vulkan_GetInstanceExtensions(m_window, &count, nullptr);
@@ -107,6 +107,11 @@ void Game::drawFrame()
 
     auto imgRes =
         device.acquireNextImageKHR(swapchain, std::numeric_limits<uint64_t>::max(), *frameData.swapchainSemaphore);
+
+    if (imgRes.result == vk::Result::eErrorOutOfDateKHR) {
+        m_vkContext.recreateSwapchain();
+        return;
+    }
 
     const auto& commandBuffer = *frameData.commandBuffer;
 
@@ -222,7 +227,11 @@ void Game::drawFrame()
                                     .pImageIndices = &imgRes.value,
                                     .pResults = nullptr};
 
-    [[maybe_unused]] auto presentRes = m_vkContext.presentQueue().presentKHR(presentInfo);
+    auto presentRes = m_vkContext.presentQueue().presentKHR(presentInfo);
+
+    if (presentRes == vk::Result::eErrorOutOfDateKHR || presentRes == vk::Result::eSuboptimalKHR) {
+        m_vkContext.recreateSwapchain();
+    }
 
     ++m_frameCount;
 }
