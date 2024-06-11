@@ -1,7 +1,7 @@
 target_sources(game PRIVATE
                core/Logger.cpp
                core/Utils.cpp
-               core/VmaAllocatorUnique.cpp
+               core/UniqueVmaAllocator.cpp
                core/VulkanGraphicsContext.cpp
                core/GraphicsPipelineBuilder.cpp
                game/Game.cpp

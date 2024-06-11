@@ -1,7 +1,7 @@
 #ifndef CORE_VULKAN_GRAPHICS_CONTEXT_H
 #define CORE_VULKAN_GRAPHICS_CONTEXT_H
 
-#include "VmaAllocatorUnique.hpp"
+#include "UniqueVmaAllocator.hpp"
 
 // libs
 #include <vulkan/vulkan.hpp>
@@ -377,7 +377,7 @@ private:
     vk::UniqueDevice m_device;
     vk::Queue m_graphicsQueue;
     vk::Queue m_presentQueue;
-    VmaAllocatorUnique m_allocator;
+    UniqueVmaAllocator m_allocator;
     vk::PresentModeKHR m_currentSwapchainPresentMode;
     vk::SurfaceFormatKHR m_currentSwapchainSurfaceFormat;
     vk::Extent2D m_currentSwapchainExtent;

@@ -1,4 +1,4 @@
-#include "VmaAllocatorUnique.hpp"
+#include "UniqueVmaAllocator.hpp"
 
 // libs
 #include <vulkan/vulkan.hpp>
@@ -9,18 +9,18 @@
 namespace core
 {
 
-VmaAllocatorUnique::VmaAllocatorUnique(const VmaAllocatorCreateInfo& createInfo)
+UniqueVmaAllocator::UniqueVmaAllocator(const VmaAllocatorCreateInfo& createInfo)
 {
     vk::Result result = static_cast<vk::Result>(vmaCreateAllocator(&createInfo, &m_allocator));
     // To be consistent with vulkan.hpp, throw an exception if != vk::Success
     vk::detail::resultCheck(result, "vmaCreateAllocator");
 }
 
-VmaAllocatorUnique::VmaAllocatorUnique(VmaAllocatorUnique&& rhs) noexcept
+UniqueVmaAllocator::UniqueVmaAllocator(UniqueVmaAllocator&& rhs) noexcept
     : m_allocator(std::exchange(rhs.m_allocator, nullptr))
 {}
 
-VmaAllocatorUnique& VmaAllocatorUnique::operator=(VmaAllocatorUnique&& rhs) noexcept
+UniqueVmaAllocator& UniqueVmaAllocator::operator=(UniqueVmaAllocator&& rhs) noexcept
 {
     if (this != &rhs) {
         std::swap(m_allocator, rhs.m_allocator);
@@ -28,7 +28,7 @@ VmaAllocatorUnique& VmaAllocatorUnique::operator=(VmaAllocatorUnique&& rhs) noex
     return *this;
 }
 
-VmaAllocatorUnique::~VmaAllocatorUnique() noexcept
+UniqueVmaAllocator::~UniqueVmaAllocator() noexcept
 {
     if (m_allocator) {
         vmaDestroyAllocator(m_allocator);

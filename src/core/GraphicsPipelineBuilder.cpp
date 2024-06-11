@@ -19,8 +19,8 @@ void GraphicsPipelineBuilder::setShaders(const std::filesystem::path& vertexShad
     auto vertShaderCode = utils::readFile(vertexShaderSourcePath);
     auto fragShaderCode = utils::readFile(fragmentShaderSourcePath);
 
-    m_vertShaderModule = utils::createShaderModuleUnique(m_device, vertShaderCode);
-    m_fragShaderModule = utils::createShaderModuleUnique(m_device, fragShaderCode);
+    m_vertShaderModule = utils::createUniqueShaderModule(m_device, vertShaderCode);
+    m_fragShaderModule = utils::createUniqueShaderModule(m_device, fragShaderCode);
 }
 
 vk::UniquePipeline GraphicsPipelineBuilder::build(vk::Format swapchainColorFormat)

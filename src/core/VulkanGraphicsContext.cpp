@@ -576,7 +576,7 @@ void VulkanGraphicsContext::createAllocator(uint32_t vulkanApiVersion)
                                                 .vulkanApiVersion = vulkanApiVersion,
                                                 .pTypeExternalMemoryHandleTypes = nullptr};
 
-    m_allocator = VmaAllocatorUnique(allocatorCreateInfo);
+    m_allocator = UniqueVmaAllocator(allocatorCreateInfo);
     DEBUG("Successfully created vmaAllocator\n");
 }
 
