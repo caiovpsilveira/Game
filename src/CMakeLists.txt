@@ -3,8 +3,12 @@ target_sources(game PRIVATE
                core/Utils.cpp
                core/UniqueVmaAllocator.cpp
                core/VulkanGraphicsContext.cpp
-               core/GraphicsPipelineBuilder.cpp
+               #
+               renderer/Utils.cpp
+               renderer/GraphicsPipelineBuilder.cpp
+               #
                game/Game.cpp
+               #
                main.cpp)
 
 target_compile_definitions(game PRIVATE

@@ -1,12 +1,12 @@
 #include "GraphicsPipelineBuilder.hpp"
 
+#include "Utils.hpp"
 #include "core/Logger.hpp"
-#include "core/Utils.hpp"
 
 // libs
 #include <vulkan/vulkan_to_string.hpp>
 
-namespace core
+namespace renderer
 {
 
 GraphicsPipelineBuilder::GraphicsPipelineBuilder(vk::Device device) noexcept
@@ -184,4 +184,4 @@ vk::UniquePipeline GraphicsPipelineBuilder::build(vk::Format swapchainColorForma
     return vk::UniquePipeline();
 }
 
-}   // namespace core
+}   // namespace renderer

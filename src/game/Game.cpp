@@ -1,8 +1,8 @@
 #include "Game.hpp"
 
-#include "core/GraphicsPipelineBuilder.hpp"
 #include "core/Logger.hpp"
-#include "core/Utils.hpp"
+#include "renderer/GraphicsPipelineBuilder.hpp"
+#include "renderer/Utils.hpp"
 
 // libs
 #include <SDL.h>
@@ -56,7 +56,7 @@ Game::~Game() noexcept
 
 void Game::createGraphicsPipeline()
 {
-    core::GraphicsPipelineBuilder builder(m_vkContext.device());
+    renderer::GraphicsPipelineBuilder builder(m_vkContext.device());
 
     builder.setShaders("../shaders/simple_shader.vert.spv", "../shaders/simple_shader.frag.spv");
     m_graphicsPipeline = builder.build(m_vkContext.swapchainColorFormat());
@@ -125,10 +125,10 @@ void Game::drawFrame()
 
     commandBuffer.begin(commandBufferBeginInfo);
 
-    core::utils::transitionImage(commandBuffer,
-                                 m_vkContext.swapchainImage(imgRes.value),
-                                 vk::ImageLayout::eUndefined,
-                                 vk::ImageLayout::eColorAttachmentOptimal);
+    renderer::utils::transitionImage(commandBuffer,
+                                     m_vkContext.swapchainImage(imgRes.value),
+                                     vk::ImageLayout::eUndefined,
+                                     vk::ImageLayout::eColorAttachmentOptimal);
 
     vk::RenderingAttachmentInfo colorAttachment {.sType = vk::StructureType::eRenderingAttachmentInfo,
                                                  .pNext = nullptr,
@@ -178,10 +178,10 @@ void Game::drawFrame()
 
     commandBuffer.endRendering();
 
-    core::utils::transitionImage(commandBuffer,
-                                 m_vkContext.swapchainImage(imgRes.value),
-                                 vk::ImageLayout::eColorAttachmentOptimal,
-                                 vk::ImageLayout::ePresentSrcKHR);
+    renderer::utils::transitionImage(commandBuffer,
+                                     m_vkContext.swapchainImage(imgRes.value),
+                                     vk::ImageLayout::eColorAttachmentOptimal,
+                                     vk::ImageLayout::ePresentSrcKHR);
 
     commandBuffer.end();
 

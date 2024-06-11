@@ -1,5 +1,5 @@
-#ifndef CORE_GRAPHICS_PIPELINE_BUILDER_HPP
-#define CORE_GRAPHICS_PIPELINE_BUILDER_HPP
+#ifndef RENDERER_GRAPHICS_PIPELINE_BUILDER_HPP
+#define RENDERER_GRAPHICS_PIPELINE_BUILDER_HPP
 
 // libs
 #include <vulkan/vulkan.hpp>
@@ -7,7 +7,7 @@
 // std
 #include <filesystem>
 
-namespace core
+namespace renderer
 {
 
 class GraphicsPipelineBuilder
@@ -35,6 +35,6 @@ private:
     vk::UniqueShaderModule m_fragShaderModule;
 };
 
-}   // namespace core
+}   // namespace renderer
 
 #endif
