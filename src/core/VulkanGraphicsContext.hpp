@@ -192,6 +192,7 @@ public:
     vk::Queue presentQueue() const noexcept { return m_presentQueue; }
 
     vk::SwapchainKHR swapchain() const noexcept { return *m_swapchain; }
+    vk::Image swapchainImage(uint32_t imageIndex) const noexcept { return m_swapchainImages[imageIndex]; }
     vk::ImageView swapchainImageView(uint32_t imageIndex) const noexcept { return *m_swapchainImageViews[imageIndex]; }
     vk::Format swapchainColorFormat() const noexcept { return m_currentSwapchainSurfaceFormat.format; }
     vk::Extent2D swapchainExtent() const noexcept { return m_currentSwapchainExtent; }

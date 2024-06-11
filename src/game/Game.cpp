@@ -2,6 +2,7 @@
 
 #include "core/GraphicsPipelineBuilder.hpp"
 #include "core/Logger.hpp"
+#include "core/Utils.hpp"
 
 // libs
 #include <SDL.h>
@@ -9,6 +10,7 @@
 
 // std
 #include <cstdint>
+#include <limits>
 #include <vector>
 
 namespace game
@@ -28,6 +30,7 @@ Game::Game()
 
     vk::PhysicalDeviceVulkan13Features features13 {};
     features13.dynamicRendering = true;
+    features13.synchronization2 = true;
 
     core::VulkanGraphicsContextCreateInfo createInfo {};
     createInfo.vulkanApiVersion = vk::makeApiVersion(0, 1, 3, 0);
@@ -92,6 +95,138 @@ void Game::initFrameData()
     }
 }
 
+void Game::drawFrame()
+{
+    const auto& device = m_vkContext.device();
+    const auto& swapchain = m_vkContext.swapchain();
+    const auto& frameData = m_frameData[m_frameCount % MAX_FRAMES_IN_FLIGHT];
+
+    [[maybe_unused]] auto fenceRes =
+        device.waitForFences(*frameData.renderFence, vk::True, std::numeric_limits<uint64_t>::max());
+    device.resetFences(*frameData.renderFence);
+
+    auto imgRes =
+        device.acquireNextImageKHR(swapchain, std::numeric_limits<uint64_t>::max(), *frameData.swapchainSemaphore);
+
+    const auto& commandBuffer = *frameData.commandBuffer;
+
+    // Begin recording and rendering
+    commandBuffer.reset();
+
+    vk::CommandBufferBeginInfo commandBufferBeginInfo {.sType = vk::StructureType::eCommandBufferBeginInfo,
+                                                       .pNext = nullptr,
+                                                       .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
+                                                       .pInheritanceInfo = nullptr};
+
+    commandBuffer.begin(commandBufferBeginInfo);
+
+    core::utils::transitionImage(commandBuffer,
+                                 m_vkContext.swapchainImage(imgRes.value),
+                                 vk::ImageLayout::eUndefined,
+                                 vk::ImageLayout::eColorAttachmentOptimal);
+
+    vk::RenderingAttachmentInfo colorAttachment {.sType = vk::StructureType::eRenderingAttachmentInfo,
+                                                 .pNext = nullptr,
+                                                 .imageView = m_vkContext.swapchainImageView(imgRes.value),
+                                                 .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                                                 .resolveMode = {},
+                                                 .resolveImageView = {},
+                                                 .resolveImageLayout = {},
+                                                 .loadOp = vk::AttachmentLoadOp::eLoad,
+                                                 .storeOp = vk::AttachmentStoreOp::eStore,
+                                                 .clearValue = {}};
+
+    vk::RenderingInfo renderingInfo {
+        .sType = vk::StructureType::eRenderingInfo,
+        .pNext = nullptr,
+        .flags = {},
+        .renderArea = {vk::Offset2D {0, 0}, m_vkContext.swapchainExtent()},
+        .layerCount = 1,
+        .viewMask = 0,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &colorAttachment,
+        .pDepthAttachment = nullptr,
+        .pStencilAttachment = nullptr
+    };
+
+    commandBuffer.beginRendering(renderingInfo);
+
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *m_graphicsPipeline);
+
+    // set dynamic viewport and scissor
+    vk::Viewport viewport {.x = 0.f,
+                           .y = 0.f,
+                           .width = static_cast<float>(m_vkContext.swapchainExtent().width),
+                           .height = static_cast<float>(m_vkContext.swapchainExtent().height),
+                           .minDepth = 0.f,
+                           .maxDepth = 1.f};
+    commandBuffer.setViewport(0, viewport);
+
+    vk::Rect2D scissor {
+        .offset = {0, 0},
+        .extent = m_vkContext.swapchainExtent()
+    };
+    commandBuffer.setScissor(0, scissor);
+
+    // draw
+    commandBuffer.draw(3, 1, 0, 0);
+
+    commandBuffer.endRendering();
+
+    core::utils::transitionImage(commandBuffer,
+                                 m_vkContext.swapchainImage(imgRes.value),
+                                 vk::ImageLayout::eColorAttachmentOptimal,
+                                 vk::ImageLayout::ePresentSrcKHR);
+
+    commandBuffer.end();
+
+    // Submit
+    vk::CommandBufferSubmitInfo commandBufferSubmitInfo {.sType = vk::StructureType::eCommandBufferSubmitInfo,
+                                                         .pNext = nullptr,
+                                                         .commandBuffer = commandBuffer,
+                                                         .deviceMask = 0};
+
+    vk::SemaphoreSubmitInfo waitInfo {.sType = vk::StructureType::eSemaphoreSubmitInfo,
+                                      .pNext = nullptr,
+                                      .semaphore = *frameData.swapchainSemaphore,
+                                      .value = 1,
+                                      .stageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                                      .deviceIndex = 0};
+
+    vk::SemaphoreSubmitInfo signalInfo {.sType = vk::StructureType::eSemaphoreSubmitInfo,
+                                        .pNext = nullptr,
+                                        .semaphore = *frameData.renderSemaphore,
+                                        .value = 1,
+                                        .stageMask = vk::PipelineStageFlagBits2::eAllGraphics,
+                                        .deviceIndex = 0};
+
+    vk::SubmitInfo2 submitInfo2 {.sType = vk::StructureType::eSubmitInfo2,
+                                 .pNext = nullptr,
+                                 .flags = {},
+                                 .waitSemaphoreInfoCount = 1,
+                                 .pWaitSemaphoreInfos = &waitInfo,
+                                 .commandBufferInfoCount = 1,
+                                 .pCommandBufferInfos = &commandBufferSubmitInfo,
+                                 .signalSemaphoreInfoCount = 1,
+                                 .pSignalSemaphoreInfos = &signalInfo};
+
+    m_vkContext.graphicsQueue().submit2(submitInfo2, *frameData.renderFence);
+
+    // Present
+    vk::PresentInfoKHR presentInfo {.sType = vk::StructureType::ePresentInfoKHR,
+                                    .pNext = nullptr,
+                                    .waitSemaphoreCount = 1,
+                                    .pWaitSemaphores = &*frameData.renderSemaphore,
+                                    .swapchainCount = 1,
+                                    .pSwapchains = &swapchain,
+                                    .pImageIndices = &imgRes.value,
+                                    .pResults = nullptr};
+
+    [[maybe_unused]] auto presentRes = m_vkContext.presentQueue().presentKHR(presentInfo);
+
+    ++m_frameCount;
+}
+
 void Game::run()
 {
     bool quit = false;
@@ -102,8 +237,11 @@ void Game::run()
                 quit = true;
                 break;
             }
+            drawFrame();
         }
     }
+
+    m_vkContext.device().waitIdle();
 }
 
 }   // namespace game

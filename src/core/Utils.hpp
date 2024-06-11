@@ -21,6 +21,11 @@ std::vector<char> readFile(const std::filesystem::path& path);
 
 vk::UniqueShaderModule createShaderModuleUnique(vk::Device device, const std::vector<char>& code);
 
+void transitionImage(vk::CommandBuffer cmd,
+                     vk::Image image,
+                     vk::ImageLayout currentLayout,
+                     vk::ImageLayout newLayout) noexcept;
+
 }   // namespace core::utils
 
 #endif
