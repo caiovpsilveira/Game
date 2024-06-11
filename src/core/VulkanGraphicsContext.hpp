@@ -185,8 +185,14 @@ public:
 
 public:
     vk::Device device() const noexcept { return m_device.get(); }
-    uint32_t graphicsQueueFamilyIndex() const noexcept { return m_queueFamiliesIndices.graphicsFamilyIndex; }
 
+    uint32_t graphicsQueueFamilyIndex() const noexcept { return m_queueFamiliesIndices.graphicsFamilyIndex; }
+    vk::Queue graphicsQueue() const noexcept { return m_graphicsQueue; }
+
+    vk::Queue presentQueue() const noexcept { return m_presentQueue; }
+
+    vk::SwapchainKHR swapchain() const noexcept { return *m_swapchain; }
+    vk::ImageView swapchainImageView(uint32_t imageIndex) const noexcept { return *m_swapchainImageViews[imageIndex]; }
     vk::Format swapchainColorFormat() const noexcept { return m_currentSwapchainSurfaceFormat.format; }
     vk::Extent2D swapchainExtent() const noexcept { return m_currentSwapchainExtent; }
 
@@ -378,6 +384,8 @@ private:
     vk::SurfaceFormatKHR m_currentSwapchainSurfaceFormat;
     vk::Extent2D m_currentSwapchainExtent;
     vk::UniqueSwapchainKHR m_swapchain;
+    std::vector<vk::Image> m_swapchainImages;
+    std::vector<vk::UniqueImageView> m_swapchainImageViews;
 };
 
 }   // namespace core

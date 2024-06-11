@@ -682,6 +682,31 @@ void VulkanGraphicsContext::recreateSwapchain(SDL_Window* window)
     m_swapchain = m_device->createSwapchainKHRUnique(swapchainCreateInfo);
     DEBUG_FMT("Successfully {} swapchain\n", oldSwapchain == nullptr ? "created" : "re-created");
     m_currentSwapchainExtent = newSwapchainExtent;
+
+    m_swapchainImages = m_device->getSwapchainImagesKHR(*m_swapchain);
+    m_swapchainImageViews.resize(m_swapchainImages.size());
+
+    for (size_t i = 0; i < m_swapchainImages.size(); ++i) {
+        vk::ImageViewCreateInfo imageViewCreateInfo {
+            .sType = vk::StructureType::eImageViewCreateInfo,
+            .pNext = nullptr,
+            .flags = {},
+            .image = m_swapchainImages[i],
+            .viewType = vk::ImageViewType::e2D,
+            .format = m_currentSwapchainSurfaceFormat.format,
+            .components = {vk::ComponentSwizzle::eIdentity,
+                      vk::ComponentSwizzle::eIdentity,
+                      vk::ComponentSwizzle::eIdentity,
+                      vk::ComponentSwizzle::eIdentity},
+            .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                      .baseMipLevel = 0,
+                      .levelCount = 1,
+                      .baseArrayLayer = 0,
+                      .layerCount = 1}
+        };
+        m_swapchainImageViews[i] = m_device->createImageViewUnique(imageViewCreateInfo);
+    }
+    DEBUG("Successfully retrieved swapchain image views\n");
 }
 
 }   // namespace core
