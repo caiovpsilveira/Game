@@ -1,5 +1,6 @@
 #include "GraphicsPipelineBuilder.hpp"
 
+#include "Types.hpp"
 #include "Utils.hpp"
 #include "core/Logger.hpp"
 
@@ -45,14 +46,17 @@ vk::UniquePipeline GraphicsPipelineBuilder::build(vk::Format swapchainColorForma
     vk::PipelineShaderStageCreateInfo shaderStagesCreateInfos[] = {vertShaderStageInfo, fragShaderStageInfo};
 
     // Vertex input
+    auto bindingDescription = Vertex::bindingDescription();
+    auto attributeDescriptions = Vertex::attributeDescriptions();
+
     vk::PipelineVertexInputStateCreateInfo vertexInputCreateInfo {
         .sType = vk::StructureType::ePipelineVertexInputStateCreateInfo,
         .pNext = nullptr,
         .flags = {},
-        .vertexBindingDescriptionCount = 0,
-        .pVertexBindingDescriptions = nullptr,
-        .vertexAttributeDescriptionCount = 0,
-        .pVertexAttributeDescriptions = nullptr};
+        .vertexBindingDescriptionCount = 1,
+        .pVertexBindingDescriptions = &bindingDescription,
+        .vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
+        .pVertexAttributeDescriptions = attributeDescriptions.data()};
 
     // Input assembly
     vk::PipelineInputAssemblyStateCreateInfo inputAssemblyCreateInfo {
