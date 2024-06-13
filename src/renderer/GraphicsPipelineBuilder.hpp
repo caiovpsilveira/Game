@@ -13,6 +13,7 @@ namespace renderer
 class GraphicsPipelineBuilder
 {
 public:
+    GraphicsPipelineBuilder() = delete;
     explicit GraphicsPipelineBuilder(vk::Device device) noexcept;
 
     ~GraphicsPipelineBuilder() noexcept = default;
