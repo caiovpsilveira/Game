@@ -564,7 +564,7 @@ void VulkanGraphicsContext::createAllocator(uint32_t vulkanApiVersion)
     vulkanFunctions.vkGetInstanceProcAddr = d.vkGetInstanceProcAddr;
     vulkanFunctions.vkGetDeviceProcAddr = d.vkGetDeviceProcAddr;
 
-    VmaAllocatorCreateInfo allocatorCreateInfo {.flags = 0,
+    VmaAllocatorCreateInfo allocatorCreateInfo {.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
                                                 .physicalDevice = m_physicalDevice,
                                                 .device = *m_device,
                                                 .preferredLargeHeapBlockSize = 0,

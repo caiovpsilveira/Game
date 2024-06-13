@@ -73,15 +73,15 @@ AllocatedBuffer& AllocatedBuffer::operator=(AllocatedBuffer&& rhs) noexcept
 {
     if (this != &rhs) {
         std::swap(m_allocator, rhs.m_allocator);
-        m_buffer = rhs.m_buffer;
-        m_allocation = rhs.m_allocation;
+        std::swap(m_buffer, rhs.m_buffer);
+        std::swap(m_allocation, rhs.m_allocation);
     }
     return *this;
 }
 
 AllocatedBuffer::~AllocatedBuffer() noexcept
 {
-    if (m_allocator) {
+    if (m_allocator != nullptr) {
         vmaDestroyBuffer(m_allocator, m_buffer, m_allocation);
     }
 }
@@ -89,26 +89,53 @@ AllocatedBuffer::~AllocatedBuffer() noexcept
 
 // Begin Mesh
 Mesh::Mesh(vk::Device device,
+           vk::CommandBuffer transferCmd,
            VmaAllocator allocator,
            std::span<const Vertex> vertices,
            std::span<const uint32_t> indices)
 {
+    // Allocate device buffers
+    const vk::DeviceSize vertexBufferSize = std::size(vertices) * sizeof(vertices[0]);
+    const vk::DeviceSize indexBufferSize = std::size(indices) * sizeof(indices[0]);
+
     m_vertexBuffer = AllocatedBuffer(allocator,
-                                     std::size(vertices) * sizeof(vertices[0]),
-                                     vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst |
+                                     vertexBufferSize,
+                                     vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst |
                                          vk::BufferUsageFlagBits::eShaderDeviceAddress,
                                      VMA_MEMORY_USAGE_GPU_ONLY);
 
+    m_indexBuffer = AllocatedBuffer(allocator,
+                                    indexBufferSize,
+                                    vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+                                    VMA_MEMORY_USAGE_GPU_ONLY);
+
+    // Retrieve the vertex buffer address
     vk::BufferDeviceAddressInfo bufferDeviceAddressInfo {.sType = vk::StructureType::eBufferDeviceAddressInfo,
                                                          .pNext = nullptr,
                                                          .buffer = m_vertexBuffer.buffer()};
     m_vertexBufferAddress = device.getBufferAddress(bufferDeviceAddressInfo);
 
-    m_indexBuffer = AllocatedBuffer(allocator,
-                                    std::size(indices) * sizeof(indices[0]),
-                                    vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-                                    VMA_MEMORY_USAGE_GPU_ONLY);
-    // TODO: copy vertices and indices to GPU buffer
+    // Copy vertex and index buffer data from host to a device staging buffer
+    // The staging buffer will be a contiguous buffer containing [vertexBufferData, indexBufferData]
+    AllocatedBuffer stagingBuffer(allocator,
+                                  vertexBufferSize + indexBufferSize,
+                                  vk::BufferUsageFlagBits::eTransferSrc,
+                                  VMA_MEMORY_USAGE_CPU_ONLY);
+
+    VmaAllocationInfo stagingAllocationInfo;
+    vmaGetAllocationInfo(allocator, stagingBuffer.allocation(), &stagingAllocationInfo);
+    auto& stagingData = stagingAllocationInfo.pMappedData;
+    // copy vertex buffer data
+    std::memcpy(stagingData, vertices.data(), vertexBufferSize);
+    // copy index buffer data
+    std::memcpy((char*) stagingData + vertexBufferSize, indices.data(), indexBufferSize);
+
+    // Copy the device staging buffer data to the device vertex buffer and index buffer
+    vk::BufferCopy vertexCopyRegion {.srcOffset = 0, .dstOffset = 0, .size = vertexBufferSize};
+    transferCmd.copyBuffer(stagingBuffer.buffer(), m_vertexBuffer.buffer(), vertexCopyRegion);
+
+    vk::BufferCopy indexCopyRegion {.srcOffset = vertexBufferSize, .dstOffset = 0, .size = indexBufferSize};
+    transferCmd.copyBuffer(stagingBuffer.buffer(), m_indexBuffer.buffer(), indexCopyRegion);
 }
 // End Mesh
 

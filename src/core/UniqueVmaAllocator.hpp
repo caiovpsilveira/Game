@@ -22,6 +22,7 @@ public:
 
     constexpr explicit operator bool() const noexcept { return m_allocator != nullptr; }
     constexpr VmaAllocator operator*() const noexcept { return m_allocator; }
+    constexpr VmaAllocator get() const noexcept { return m_allocator; }
 
 private:
     VmaAllocator m_allocator = nullptr;

@@ -28,6 +28,8 @@ Game::Game()
 
     std::vector<const char*> requiredDeviceExtensions {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
+    vk::PhysicalDeviceVulkan12Features features12 {};
+    features12.bufferDeviceAddress = true;
     vk::PhysicalDeviceVulkan13Features features13 {};
     features13.dynamicRendering = true;
     features13.synchronization2 = true;
@@ -39,6 +41,7 @@ Game::Game()
     createInfo.enableValidationLayersIfSupported = true;
     createInfo.enableDebugMessengerIfSupported = true;
     createInfo.window = m_window;
+    createInfo.requiredDevice12Features = &features12;
     createInfo.requiredDevice13Features = &features13;
     m_vkContext = core::VulkanGraphicsContext(createInfo);
 

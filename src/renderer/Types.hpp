@@ -41,6 +41,7 @@ public:
 
 public:
     vk::Buffer buffer() const noexcept { return m_buffer; }
+    VmaAllocation allocation() const noexcept { return m_allocation; }
 
 private:
     VmaAllocator m_allocator = nullptr;   // not owned
@@ -53,6 +54,7 @@ class Mesh
 public:
     Mesh() noexcept = default;
     Mesh(vk::Device device,
+         vk::CommandBuffer transferCmd,
          VmaAllocator allocator,
          std::span<const Vertex> vertices,
          std::span<const uint32_t> indices);
