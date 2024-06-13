@@ -10,7 +10,6 @@
 #include <span>
 
 struct SDL_Window;
-struct VmaAllocator_T;
 
 namespace core
 {

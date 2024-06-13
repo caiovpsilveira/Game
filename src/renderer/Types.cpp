@@ -3,6 +3,7 @@
 namespace renderer
 {
 
+// Begin Vertex
 vk::VertexInputBindingDescription Vertex::bindingDescription() noexcept
 {
     return vk::VertexInputBindingDescription {.binding = 0,
@@ -25,5 +26,90 @@ std::array<vk::VertexInputAttributeDescription, 2> Vertex::attributeDescriptions
                                 .offset = offsetof(Vertex, color)};
     return attributeDescriptions;
 }
+// End Vertex
+
+// Begin AllocatedBuffer
+AllocatedBuffer::AllocatedBuffer(VmaAllocator allocator,
+                                 vk::DeviceSize size,
+                                 vk::BufferUsageFlags usage,
+                                 VmaMemoryUsage memoryUsage)
+    : m_allocator(allocator)
+{
+    vk::BufferCreateInfo bufferCreateInfo {.sType = vk::StructureType::eBufferCreateInfo,
+                                           .pNext = nullptr,
+                                           .flags = {},
+                                           .size = size,
+                                           .usage = usage,
+                                           .sharingMode = vk::SharingMode::eExclusive,
+                                           .queueFamilyIndexCount = 0,
+                                           .pQueueFamilyIndices = nullptr};
+
+    VmaAllocationCreateInfo allocationCreateInfo {.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT,
+                                                  .usage = memoryUsage,
+                                                  .requiredFlags = {},
+                                                  .preferredFlags = {},
+                                                  .memoryTypeBits = {},
+                                                  .pool = nullptr,
+                                                  .pUserData = nullptr,
+                                                  .priority = 0.f};
+
+    vk::detail::resultCheck(
+        static_cast<vk::Result>(vmaCreateBuffer(m_allocator,
+                                                reinterpret_cast<VkBufferCreateInfo*>(&bufferCreateInfo),
+                                                &allocationCreateInfo,
+                                                reinterpret_cast<VkBuffer*>(&m_buffer),
+                                                &m_allocation,
+                                                nullptr)),
+        "vmaCreateBuffer");
+}
+
+AllocatedBuffer::AllocatedBuffer(AllocatedBuffer&& rhs) noexcept
+    : m_allocator(std::exchange(rhs.m_allocator, nullptr))
+    , m_buffer(rhs.m_buffer)
+    , m_allocation(rhs.m_allocation)
+{}
+
+AllocatedBuffer& AllocatedBuffer::operator=(AllocatedBuffer&& rhs) noexcept
+{
+    if (this != &rhs) {
+        std::swap(m_allocator, rhs.m_allocator);
+        m_buffer = rhs.m_buffer;
+        m_allocation = rhs.m_allocation;
+    }
+    return *this;
+}
+
+AllocatedBuffer::~AllocatedBuffer() noexcept
+{
+    if (m_allocator) {
+        vmaDestroyBuffer(m_allocator, m_buffer, m_allocation);
+    }
+}
+// End AllocatedBuffer
+
+// Begin Mesh
+Mesh::Mesh(vk::Device device,
+           VmaAllocator allocator,
+           std::span<const Vertex> vertices,
+           std::span<const uint32_t> indices)
+{
+    m_vertexBuffer = AllocatedBuffer(allocator,
+                                     std::size(vertices) * sizeof(vertices[0]),
+                                     vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst |
+                                         vk::BufferUsageFlagBits::eShaderDeviceAddress,
+                                     VMA_MEMORY_USAGE_GPU_ONLY);
+
+    vk::BufferDeviceAddressInfo bufferDeviceAddressInfo {.sType = vk::StructureType::eBufferDeviceAddressInfo,
+                                                         .pNext = nullptr,
+                                                         .buffer = m_vertexBuffer.buffer()};
+    m_vertexBufferAddress = device.getBufferAddress(bufferDeviceAddressInfo);
+
+    m_indexBuffer = AllocatedBuffer(allocator,
+                                    std::size(indices) * sizeof(indices[0]),
+                                    vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+                                    VMA_MEMORY_USAGE_GPU_ONLY);
+    // TODO: copy vertices and indices to GPU buffer
+}
+// End Mesh
 
 }   // namespace renderer
