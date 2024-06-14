@@ -154,8 +154,9 @@ VulkanGraphicsContext::VulkanGraphicsContext(const VulkanGraphicsContextCreateIn
     assert(m_surface);
     assert(m_physicalDevice);
     assert(m_device);
-    assert(m_graphicsQueue);
-    assert(m_presentQueue);
+    assert(m_queues.graphicsQueue);
+    assert(m_queues.presentQueue);
+    assert(m_queues.transferQueue);
     assert(m_allocator);
     assert(m_swapchain);
 }
@@ -251,17 +252,28 @@ void VulkanGraphicsContext::searchPhysicalDevice(std::span<const char* const> re
 
     for (const auto& pd : physicalDevices) {
         auto queueFamiliesProperties = pd.getQueueFamilyProperties();
+
         std::optional<uint32_t> graphicsFamilyIndex;
         std::optional<uint32_t> presentFamilyIndex;
+        std::optional<uint32_t> transferFamilyIndex;
+
         for (size_t i = 0; i < queueFamiliesProperties.size(); ++i) {
             const auto& qp = queueFamiliesProperties[i];
             if (qp.queueFlags & vk::QueueFlagBits::eGraphics) {
                 graphicsFamilyIndex = i;
+                transferFamilyIndex = i;
             }
+
             if (pd.getSurfaceSupportKHR(i, *m_surface)) {
                 presentFamilyIndex = i;
             }
-            if (graphicsFamilyIndex && presentFamilyIndex) {
+
+            // if (qp.queueFlags & vk::QueueFlagBits::eTransfer &&
+            //     !(qp.queueFlags & vk::QueueFlagBits::eGraphics && !(qp.queueFlags & vk::QueueFlagBits::eCompute))) {
+            //     transferFamilyIndex = i;
+            // }
+
+            if (graphicsFamilyIndex && presentFamilyIndex && transferFamilyIndex) {
                 break;
             }
         }
@@ -281,10 +293,12 @@ void VulkanGraphicsContext::searchPhysicalDevice(std::span<const char* const> re
                                                                   requiredDevice12Features,
                                                                   requiredDevice13Features);
 
-        if (graphicsFamilyIndex && presentFamilyIndex && supportsAllExtensions && supportsAllFeatures) {
+        if (graphicsFamilyIndex && presentFamilyIndex && transferFamilyIndex && supportsAllExtensions &&
+            supportsAllFeatures) {
             m_physicalDevice = pd;
             m_queueFamiliesIndices.graphicsFamilyIndex = *graphicsFamilyIndex;
             m_queueFamiliesIndices.presentFamilyIndex = *presentFamilyIndex;
+            m_queueFamiliesIndices.transferFamilyIndex = *transferFamilyIndex;
 
             auto pdProperties = pd.getProperties();
             DEBUG_FMT(
@@ -311,7 +325,8 @@ void VulkanGraphicsContext::createLogicalDevice(std::span<const char* const> req
                                                 vk::PhysicalDeviceVulkan13Features* requiredDevice13Features)
 {
     std::vector<uint32_t> uniqueQueueFamiliesIndices {m_queueFamiliesIndices.graphicsFamilyIndex,
-                                                      m_queueFamiliesIndices.presentFamilyIndex};
+                                                      m_queueFamiliesIndices.presentFamilyIndex,
+                                                      m_queueFamiliesIndices.transferFamilyIndex};
     // remove duplicate elements
     uniqueQueueFamiliesIndices.erase(std::unique(uniqueQueueFamiliesIndices.begin(), uniqueQueueFamiliesIndices.end()),
                                      uniqueQueueFamiliesIndices.end());
@@ -378,8 +393,9 @@ void VulkanGraphicsContext::createLogicalDevice(std::span<const char* const> req
     DEBUG("Successfully created logical device\n");
     VULKAN_HPP_DEFAULT_DISPATCHER.init(*m_device);
 
-    m_graphicsQueue = m_device->getQueue(m_queueFamiliesIndices.graphicsFamilyIndex, 0);
-    m_presentQueue = m_device->getQueue(m_queueFamiliesIndices.presentFamilyIndex, 0);
+    m_queues.graphicsQueue = m_device->getQueue(m_queueFamiliesIndices.graphicsFamilyIndex, 0);
+    m_queues.presentQueue = m_device->getQueue(m_queueFamiliesIndices.presentFamilyIndex, 0);
+    m_queues.transferQueue = m_device->getQueue(m_queueFamiliesIndices.transferFamilyIndex, 0);
 }
 
 void VulkanGraphicsContext::createAllocator(uint32_t vulkanApiVersion)
@@ -470,6 +486,8 @@ void VulkanGraphicsContext::recreateSwapchain()
     vk::SharingMode imageSharingMode;
     uint32_t queueFamilyIndexCount;
     uint32_t* pQueueFamilyIndices;
+    // array of queue family indices having access to the images(s) of the swapchain when imageSharingMode is
+    // VK_SHARING_MODE_CONCURRENT
     uint32_t queueFamilyIndices[] = {m_queueFamiliesIndices.graphicsFamilyIndex,
                                      m_queueFamiliesIndices.presentFamilyIndex};
 

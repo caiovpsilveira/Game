@@ -187,9 +187,10 @@ public:
     vk::Device device() const noexcept { return m_device.get(); }
 
     uint32_t graphicsQueueFamilyIndex() const noexcept { return m_queueFamiliesIndices.graphicsFamilyIndex; }
-    vk::Queue graphicsQueue() const noexcept { return m_graphicsQueue; }
 
-    vk::Queue presentQueue() const noexcept { return m_presentQueue; }
+    vk::Queue graphicsQueue() const noexcept { return m_queues.graphicsQueue; }
+    vk::Queue presentQueue() const noexcept { return m_queues.graphicsQueue; }
+    vk::Queue transferQueue() const noexcept { return m_queues.transferQueue; }
 
     VmaAllocator allocator() const noexcept { return m_allocator.get(); }
 
@@ -231,6 +232,13 @@ private:
     struct QueueFamiliesIndices {
         uint32_t graphicsFamilyIndex;
         uint32_t presentFamilyIndex;
+        uint32_t transferFamilyIndex;
+    };
+
+    struct Queues {
+        vk::Queue graphicsQueue;
+        vk::Queue presentQueue;
+        vk::Queue transferQueue;
     };
 
     /*!
@@ -376,8 +384,7 @@ private:
     vk::PhysicalDevice m_physicalDevice;
     QueueFamiliesIndices m_queueFamiliesIndices;
     vk::UniqueDevice m_device;
-    vk::Queue m_graphicsQueue;
-    vk::Queue m_presentQueue;
+    Queues m_queues;
     UniqueVmaAllocator m_allocator;
     vk::PresentModeKHR m_currentSwapchainPresentMode;
     vk::SurfaceFormatKHR m_currentSwapchainSurfaceFormat;
