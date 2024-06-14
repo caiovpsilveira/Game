@@ -47,6 +47,8 @@ Game::Game()
 
     createGraphicsPipeline();
     DEBUG("Successfully created graphics pipeline\n");
+    initTransferData();
+    DEBUG("Successfully created transfer data\n");
     initFrameData();
     DEBUG("Successfully created frame data\n");
 }
@@ -63,6 +65,31 @@ void Game::createGraphicsPipeline()
 
     builder.setShaders("../shaders/simple_shader.vert.spv", "../shaders/simple_shader.frag.spv");
     m_graphicsPipeline = builder.build(m_vkContext.swapchainColorFormat());
+}
+
+void Game::initTransferData()
+{
+    vk::CommandPoolCreateInfo commandPoolCreateInfo {.sType = vk::StructureType::eCommandPoolCreateInfo,
+                                                     .pNext = nullptr,
+                                                     .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+                                                     .queueFamilyIndex = m_vkContext.transferQueueFamilyIndex()};
+
+    m_transferData.commandPool = m_vkContext.device().createCommandPoolUnique(commandPoolCreateInfo);
+
+    vk::CommandBufferAllocateInfo commandBufferAllocateInfo {.sType = vk::StructureType::eCommandBufferAllocateInfo,
+                                                             .pNext = nullptr,
+                                                             .commandPool = *m_transferData.commandPool,
+                                                             .level = vk::CommandBufferLevel::ePrimary,
+                                                             .commandBufferCount = 1};
+
+    m_transferData.commandBuffer =
+        std::move(m_vkContext.device().allocateCommandBuffersUnique(commandBufferAllocateInfo)[0]);
+
+    vk::FenceCreateInfo fenceCreateInfo {.sType = vk::StructureType::eFenceCreateInfo,
+                                         .pNext = nullptr,
+                                         .flags = vk::FenceCreateFlagBits::eSignaled};
+
+    m_transferData.fence = m_vkContext.device().createFenceUnique(fenceCreateInfo);
 }
 
 void Game::initFrameData()

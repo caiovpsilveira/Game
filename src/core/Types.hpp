@@ -6,6 +6,12 @@
 namespace core
 {
 
+struct TransferData {
+    vk::UniqueCommandPool commandPool;
+    vk::UniqueCommandBuffer commandBuffer;
+    vk::UniqueFence fence;
+};
+
 struct FrameData {
     vk::UniqueCommandPool commandPool;
     vk::UniqueCommandBuffer commandBuffer;

@@ -187,6 +187,8 @@ public:
     vk::Device device() const noexcept { return m_device.get(); }
 
     uint32_t graphicsQueueFamilyIndex() const noexcept { return m_queueFamiliesIndices.graphicsFamilyIndex; }
+    uint32_t presentQueueFamilyIndex() const noexcept { return m_queueFamiliesIndices.presentFamilyIndex; }
+    uint32_t transferQueueFamilyIndex() const noexcept { return m_queueFamiliesIndices.transferFamilyIndex; }
 
     vk::Queue graphicsQueue() const noexcept { return m_queues.graphicsQueue; }
     vk::Queue presentQueue() const noexcept { return m_queues.graphicsQueue; }
