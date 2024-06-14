@@ -16,6 +16,16 @@
 namespace game
 {
 
+// TODO: remove
+static const std::vector<renderer::Vertex> vertices = {
+    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+    { {0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+    {  {0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+    { {-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+};
+
+static const std::vector<uint32_t> indices = {0, 1, 2, 2, 3, 0};
+
 Game::Game()
 {
     SDL_Init(SDL_INIT_VIDEO);
@@ -51,6 +61,10 @@ Game::Game()
     DEBUG("Successfully created transfer data\n");
     initFrameData();
     DEBUG("Successfully created frame data\n");
+
+    // TODO: remove
+    uploadMesh();
+    DEBUG("Successfully uploaded mesh\n");
 }
 
 Game::~Game() noexcept
@@ -69,12 +83,14 @@ void Game::createGraphicsPipeline()
 
 void Game::initTransferData()
 {
+    const auto& device = m_vkContext.device();
+
     vk::CommandPoolCreateInfo commandPoolCreateInfo {.sType = vk::StructureType::eCommandPoolCreateInfo,
                                                      .pNext = nullptr,
                                                      .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
                                                      .queueFamilyIndex = m_vkContext.transferQueueFamilyIndex()};
 
-    m_transferData.commandPool = m_vkContext.device().createCommandPoolUnique(commandPoolCreateInfo);
+    m_transferData.commandPool = device.createCommandPoolUnique(commandPoolCreateInfo);
 
     vk::CommandBufferAllocateInfo commandBufferAllocateInfo {.sType = vk::StructureType::eCommandBufferAllocateInfo,
                                                              .pNext = nullptr,
@@ -82,14 +98,13 @@ void Game::initTransferData()
                                                              .level = vk::CommandBufferLevel::ePrimary,
                                                              .commandBufferCount = 1};
 
-    m_transferData.commandBuffer =
-        std::move(m_vkContext.device().allocateCommandBuffersUnique(commandBufferAllocateInfo)[0]);
+    m_transferData.commandBuffer = std::move(device.allocateCommandBuffersUnique(commandBufferAllocateInfo)[0]);
 
     vk::FenceCreateInfo fenceCreateInfo {.sType = vk::StructureType::eFenceCreateInfo,
                                          .pNext = nullptr,
                                          .flags = vk::FenceCreateFlagBits::eSignaled};
 
-    m_transferData.fence = m_vkContext.device().createFenceUnique(fenceCreateInfo);
+    m_transferData.fence = device.createFenceUnique(fenceCreateInfo);
 }
 
 void Game::initFrameData()
@@ -125,11 +140,53 @@ void Game::initFrameData()
     }
 }
 
+void Game::uploadMesh()
+{
+    const auto& device = m_vkContext.device();
+    const auto& commandBuffer = *m_transferData.commandBuffer;
+    const auto& fence = *m_transferData.fence;
+
+    [[maybe_unused]] auto fenceRes = device.waitForFences(fence, true, std::numeric_limits<uint64_t>::max());
+    device.resetFences(fence);
+
+    commandBuffer.reset();
+
+    vk::CommandBufferBeginInfo commandBufferBeginInfo {.sType = vk::StructureType::eCommandBufferBeginInfo,
+                                                       .pNext = nullptr,
+                                                       .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
+                                                       .pInheritanceInfo = nullptr};
+
+    m_transferData.commandBuffer->begin(commandBufferBeginInfo);
+
+    m_testMesh = renderer::Mesh(device, commandBuffer, m_vkContext.allocator(), vertices, indices);
+
+    m_transferData.commandBuffer->end();
+
+    vk::CommandBufferSubmitInfo commandBufferSubmitInfo {.sType = vk::StructureType::eCommandBufferSubmitInfo,
+                                                         .pNext = nullptr,
+                                                         .commandBuffer = commandBuffer,
+                                                         .deviceMask = 0};
+
+    vk::SubmitInfo2 submitInfo2 {.sType = vk::StructureType::eSubmitInfo2,
+                                 .pNext = nullptr,
+                                 .flags = {},
+                                 .waitSemaphoreInfoCount = 0,
+                                 .pWaitSemaphoreInfos = nullptr,
+                                 .commandBufferInfoCount = 1,
+                                 .pCommandBufferInfos = &commandBufferSubmitInfo,
+                                 .signalSemaphoreInfoCount = 0,
+                                 .pSignalSemaphoreInfos = nullptr};
+
+    m_vkContext.transferQueue().submit2(submitInfo2, fence);
+    fenceRes = device.waitForFences(fence, true, std::numeric_limits<uint64_t>::max());
+}
+
 void Game::drawFrame()
 {
     const auto& device = m_vkContext.device();
     const auto& swapchain = m_vkContext.swapchain();
     const auto& frameData = m_frameData[m_frameCount % MAX_FRAMES_IN_FLIGHT];
+    const auto& commandBuffer = *frameData.commandBuffer;
 
     [[maybe_unused]] auto fenceRes =
         device.waitForFences(*frameData.renderFence, vk::True, std::numeric_limits<uint64_t>::max());
@@ -142,8 +199,6 @@ void Game::drawFrame()
         m_vkContext.recreateSwapchain();
         return;
     }
-
-    const auto& commandBuffer = *frameData.commandBuffer;
 
     // Begin recording and rendering
     commandBuffer.reset();

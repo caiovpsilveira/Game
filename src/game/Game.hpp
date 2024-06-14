@@ -3,6 +3,7 @@
 
 #include "core/Types.hpp"
 #include "core/VulkanGraphicsContext.hpp"
+#include "renderer/Types.hpp"
 
 struct SDL_Window;
 
@@ -32,6 +33,8 @@ private:
     void initTransferData();
     void initFrameData();
 
+    void uploadMesh();
+
     void drawFrame();
 
 private:
@@ -41,6 +44,7 @@ private:
     core::TransferData m_transferData;
     size_t m_frameCount = 0;
     core::FrameData m_frameData[MAX_FRAMES_IN_FLIGHT];
+    renderer::Mesh m_testMesh;
 };
 
 }   // namespace game

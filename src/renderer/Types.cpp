@@ -32,6 +32,7 @@ std::array<vk::VertexInputAttributeDescription, 2> Vertex::attributeDescriptions
 AllocatedBuffer::AllocatedBuffer(VmaAllocator allocator,
                                  vk::DeviceSize size,
                                  vk::BufferUsageFlags usage,
+                                 VmaAllocatorCreateFlags allocationFlags,
                                  VmaMemoryUsage memoryUsage)
     : m_allocator(allocator)
 {
@@ -44,7 +45,7 @@ AllocatedBuffer::AllocatedBuffer(VmaAllocator allocator,
                                            .queueFamilyIndexCount = 0,
                                            .pQueueFamilyIndices = nullptr};
 
-    VmaAllocationCreateInfo allocationCreateInfo {.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT,
+    VmaAllocationCreateInfo allocationCreateInfo {.flags = allocationFlags,
                                                   .usage = memoryUsage,
                                                   .requiredFlags = {},
                                                   .preferredFlags = {},
@@ -102,12 +103,14 @@ Mesh::Mesh(vk::Device device,
                                      vertexBufferSize,
                                      vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst |
                                          vk::BufferUsageFlagBits::eShaderDeviceAddress,
-                                     VMA_MEMORY_USAGE_GPU_ONLY);
+                                     0,
+                                     VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE);
 
     m_indexBuffer = AllocatedBuffer(allocator,
                                     indexBufferSize,
                                     vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-                                    VMA_MEMORY_USAGE_GPU_ONLY);
+                                    0,
+                                    VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE);
 
     // Retrieve the vertex buffer address
     vk::BufferDeviceAddressInfo bufferDeviceAddressInfo {.sType = vk::StructureType::eBufferDeviceAddressInfo,
@@ -120,7 +123,9 @@ Mesh::Mesh(vk::Device device,
     AllocatedBuffer stagingBuffer(allocator,
                                   vertexBufferSize + indexBufferSize,
                                   vk::BufferUsageFlagBits::eTransferSrc,
-                                  VMA_MEMORY_USAGE_CPU_ONLY);
+                                  VMA_ALLOCATION_CREATE_MAPPED_BIT |
+                                      VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+                                  VMA_MEMORY_USAGE_AUTO_PREFER_HOST);
 
     VmaAllocationInfo stagingAllocationInfo;
     vmaGetAllocationInfo(allocator, stagingBuffer.allocation(), &stagingAllocationInfo);

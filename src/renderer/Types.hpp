@@ -29,6 +29,7 @@ public:
     AllocatedBuffer(VmaAllocator allocator,
                     vk::DeviceSize size,
                     vk::BufferUsageFlags usage,
+                    VmaAllocatorCreateFlags allocationFlags,
                     VmaMemoryUsage memoryUsage);
 
     AllocatedBuffer(const AllocatedBuffer&) = delete;
