@@ -227,6 +227,12 @@ void VulkanGraphicsContext::createInstanceAndDebug(uint32_t vulkanApiVersion,
     }
 }
 
+static bool supportsRequiredDeviceFeatures(vk::PhysicalDevice physicalDevice,
+                                           const vk::PhysicalDeviceFeatures* requiredDevice10Features,
+                                           const vk::PhysicalDeviceVulkan11Features* requiredDevice11Features,
+                                           const vk::PhysicalDeviceVulkan12Features* requiredDevice12Features,
+                                           const vk::PhysicalDeviceVulkan13Features* requiredDevice13Features);
+
 void VulkanGraphicsContext::searchPhysicalDevice(std::span<const char* const> requiredDeviceExtensions,
                                                  const vk::PhysicalDeviceFeatures* requiredDevice10Features,
                                                  const vk::PhysicalDeviceVulkan11Features* requiredDevice11Features,
@@ -261,7 +267,6 @@ void VulkanGraphicsContext::searchPhysicalDevice(std::span<const char* const> re
         }
 
         auto availablePhysicalDeviceExtensions = pd.enumerateDeviceExtensionProperties();
-
         bool supportsAllExtensions = true;
         for (auto ext : requiredDeviceExtensions) {
             if (!utils::containsExtension(availablePhysicalDeviceExtensions, ext)) {
@@ -270,190 +275,11 @@ void VulkanGraphicsContext::searchPhysicalDevice(std::span<const char* const> re
             }
         }
 
-        auto deviceApiVersion = pd.getProperties().apiVersion;
-
-        vk::PhysicalDeviceFeatures2 chain;
-        auto& supported10Features = chain.features;
-        vk::PhysicalDeviceVulkan11Features supported11Features;
-        vk::PhysicalDeviceVulkan12Features supported12Features;
-        vk::PhysicalDeviceVulkan13Features supported13Features;
-
-        if (deviceApiVersion >= vk::ApiVersion11) {
-            chain.pNext = &supported11Features;
-            if (deviceApiVersion >= vk::ApiVersion12) {
-                supported11Features.pNext = &supported12Features;
-                if (deviceApiVersion >= vk::ApiVersion13) {
-                    supported12Features.pNext = &supported13Features;
-                }
-            }
-        }
-
-        pd.getFeatures2(&chain);
-
-        bool supportsAllFeatures = true;
-        if (requiredDevice10Features) {
-            // clang-format off
-            if ((requiredDevice10Features->robustBufferAccess && !supported10Features.robustBufferAccess) ||
-            (requiredDevice10Features->fullDrawIndexUint32 && !supported10Features.fullDrawIndexUint32) ||
-            (requiredDevice10Features->imageCubeArray && !supported10Features.imageCubeArray) ||
-            (requiredDevice10Features->independentBlend && !supported10Features.independentBlend) ||
-            (requiredDevice10Features->geometryShader && !supported10Features.geometryShader) ||
-            (requiredDevice10Features->tessellationShader && !supported10Features.tessellationShader) ||
-            (requiredDevice10Features->sampleRateShading && !supported10Features.sampleRateShading) ||
-            (requiredDevice10Features->dualSrcBlend && !supported10Features.dualSrcBlend) ||
-            (requiredDevice10Features->logicOp && !supported10Features.logicOp) ||
-            (requiredDevice10Features->multiDrawIndirect && !supported10Features.multiDrawIndirect) ||
-            (requiredDevice10Features->drawIndirectFirstInstance && !supported10Features.drawIndirectFirstInstance) ||
-            (requiredDevice10Features->depthClamp && !supported10Features.depthClamp) ||
-            (requiredDevice10Features->depthBiasClamp && !supported10Features.depthBiasClamp) ||
-            (requiredDevice10Features->fillModeNonSolid && !supported10Features.fillModeNonSolid) ||
-            (requiredDevice10Features->depthBounds && !supported10Features.depthBounds) ||
-            (requiredDevice10Features->wideLines && !supported10Features.wideLines) ||
-            (requiredDevice10Features->largePoints && !supported10Features.largePoints) ||
-            (requiredDevice10Features->alphaToOne && !supported10Features.alphaToOne) ||
-            (requiredDevice10Features->multiViewport && !supported10Features.multiViewport) ||
-            (requiredDevice10Features->samplerAnisotropy && !supported10Features.samplerAnisotropy) ||
-            (requiredDevice10Features->textureCompressionETC2 && !supported10Features.textureCompressionETC2) ||
-            (requiredDevice10Features->textureCompressionASTC_LDR && !supported10Features.textureCompressionASTC_LDR) ||
-            (requiredDevice10Features->textureCompressionBC && !supported10Features.textureCompressionBC) ||
-            (requiredDevice10Features->occlusionQueryPrecise && !supported10Features.occlusionQueryPrecise) ||
-            (requiredDevice10Features->pipelineStatisticsQuery && !supported10Features.pipelineStatisticsQuery) ||
-            (requiredDevice10Features->vertexPipelineStoresAndAtomics && !supported10Features.vertexPipelineStoresAndAtomics) ||
-            (requiredDevice10Features->fragmentStoresAndAtomics && !supported10Features.fragmentStoresAndAtomics) ||
-            (requiredDevice10Features->shaderTessellationAndGeometryPointSize && !supported10Features.shaderTessellationAndGeometryPointSize) ||
-            (requiredDevice10Features->shaderImageGatherExtended && !supported10Features.shaderImageGatherExtended) ||
-            (requiredDevice10Features->shaderStorageImageExtendedFormats && !supported10Features.shaderStorageImageExtendedFormats) ||
-            (requiredDevice10Features->shaderStorageImageMultisample && !supported10Features.shaderStorageImageMultisample) ||
-            (requiredDevice10Features->shaderStorageImageReadWithoutFormat && !supported10Features.shaderStorageImageReadWithoutFormat) ||
-            (requiredDevice10Features->shaderStorageImageWriteWithoutFormat && !supported10Features.shaderStorageImageWriteWithoutFormat) ||
-            (requiredDevice10Features->shaderUniformBufferArrayDynamicIndexing && !supported10Features.shaderUniformBufferArrayDynamicIndexing) ||
-            (requiredDevice10Features->shaderSampledImageArrayDynamicIndexing && !supported10Features.shaderSampledImageArrayDynamicIndexing) ||
-            (requiredDevice10Features->shaderStorageBufferArrayDynamicIndexing && !supported10Features.shaderStorageBufferArrayDynamicIndexing) ||
-            (requiredDevice10Features->shaderStorageImageArrayDynamicIndexing && !supported10Features.shaderStorageImageArrayDynamicIndexing) ||
-            (requiredDevice10Features->shaderClipDistance && !supported10Features.shaderClipDistance) ||
-            (requiredDevice10Features->shaderCullDistance && !supported10Features.shaderCullDistance) ||
-            (requiredDevice10Features->shaderFloat64 && !supported10Features.shaderFloat64) ||
-            (requiredDevice10Features->shaderInt64 && !supported10Features.shaderInt64) ||
-            (requiredDevice10Features->shaderInt16 && !supported10Features.shaderInt16) ||
-            (requiredDevice10Features->shaderResourceResidency && !supported10Features.shaderResourceResidency) ||
-            (requiredDevice10Features->shaderResourceMinLod && !supported10Features.shaderResourceMinLod) ||
-            (requiredDevice10Features->sparseBinding && !supported10Features.sparseBinding) ||
-            (requiredDevice10Features->sparseResidencyBuffer && !supported10Features.sparseResidencyBuffer) ||
-            (requiredDevice10Features->sparseResidencyImage2D && !supported10Features.sparseResidencyImage2D) ||
-            (requiredDevice10Features->sparseResidencyImage3D && !supported10Features.sparseResidencyImage3D) ||
-            (requiredDevice10Features->sparseResidency2Samples && !supported10Features.sparseResidency2Samples) ||
-            (requiredDevice10Features->sparseResidency4Samples && !supported10Features.sparseResidency4Samples) ||
-            (requiredDevice10Features->sparseResidency8Samples && !supported10Features.sparseResidency8Samples) ||
-            (requiredDevice10Features->sparseResidency16Samples && !supported10Features.sparseResidency16Samples) ||
-            (requiredDevice10Features->sparseResidencyAliased && !supported10Features.sparseResidencyAliased) ||
-            (requiredDevice10Features->variableMultisampleRate && !supported10Features.variableMultisampleRate) ||
-            (requiredDevice10Features->inheritedQueries && !supported10Features.inheritedQueries))
-            {
-                supportsAllFeatures = false;
-            }
-            // clang-format on
-        }
-
-        if (supportsAllFeatures && requiredDevice11Features) {
-            // clang-format off
-            if ((deviceApiVersion < vk::ApiVersion11) ||
-            (requiredDevice11Features->storageBuffer16BitAccess && !supported11Features.storageBuffer16BitAccess) ||
-            (requiredDevice11Features->uniformAndStorageBuffer16BitAccess && !supported11Features.uniformAndStorageBuffer16BitAccess) ||
-            (requiredDevice11Features->storagePushConstant16 && !supported11Features.storagePushConstant16) ||
-            (requiredDevice11Features->storageInputOutput16 && !supported11Features.storageInputOutput16) ||
-            (requiredDevice11Features->multiview && !supported11Features.multiview) ||
-            (requiredDevice11Features->multiviewGeometryShader && !supported11Features.multiviewGeometryShader) ||
-            (requiredDevice11Features->multiviewTessellationShader && !supported11Features.multiviewTessellationShader) ||
-            (requiredDevice11Features->variablePointersStorageBuffer && !supported11Features.variablePointersStorageBuffer) ||
-            (requiredDevice11Features->variablePointers && !supported11Features.variablePointers) ||
-            (requiredDevice11Features->protectedMemory && !supported11Features.protectedMemory) ||
-            (requiredDevice11Features->samplerYcbcrConversion && !supported11Features.samplerYcbcrConversion) ||
-            (requiredDevice11Features->shaderDrawParameters && !supported11Features.shaderDrawParameters))
-            {
-                supportsAllFeatures = false;
-            }
-            // clang-format on
-        }
-
-        if (supportsAllFeatures && requiredDevice12Features) {
-            // clang-format off
-            if ((deviceApiVersion < vk::ApiVersion12) ||
-            (requiredDevice12Features->samplerMirrorClampToEdge && !supported12Features.samplerMirrorClampToEdge) ||
-            (requiredDevice12Features->drawIndirectCount && !supported12Features.drawIndirectCount) ||
-            (requiredDevice12Features->storageBuffer8BitAccess && !supported12Features.storageBuffer8BitAccess) ||
-            (requiredDevice12Features->uniformAndStorageBuffer8BitAccess && !supported12Features.uniformAndStorageBuffer8BitAccess) ||
-            (requiredDevice12Features->storagePushConstant8 && !supported12Features.storagePushConstant8) ||
-            (requiredDevice12Features->shaderBufferInt64Atomics && !supported12Features.shaderBufferInt64Atomics) ||
-            (requiredDevice12Features->shaderSharedInt64Atomics && !supported12Features.shaderSharedInt64Atomics) ||
-            (requiredDevice12Features->shaderFloat16 && !supported12Features.shaderFloat16) ||
-            (requiredDevice12Features->shaderInt8 && !supported12Features.shaderInt8) ||
-            (requiredDevice12Features->descriptorIndexing && !supported12Features.descriptorIndexing) ||
-            (requiredDevice12Features->shaderInputAttachmentArrayDynamicIndexing && !supported12Features.shaderInputAttachmentArrayDynamicIndexing) ||
-            (requiredDevice12Features->shaderUniformTexelBufferArrayDynamicIndexing && !supported12Features.shaderUniformTexelBufferArrayDynamicIndexing) ||
-            (requiredDevice12Features->shaderStorageTexelBufferArrayDynamicIndexing && !supported12Features.shaderStorageTexelBufferArrayDynamicIndexing) ||
-            (requiredDevice12Features->shaderUniformBufferArrayNonUniformIndexing && !supported12Features.shaderUniformBufferArrayNonUniformIndexing) ||
-            (requiredDevice12Features->shaderSampledImageArrayNonUniformIndexing && !supported12Features.shaderSampledImageArrayNonUniformIndexing) ||
-            (requiredDevice12Features->shaderStorageBufferArrayNonUniformIndexing && !supported12Features.shaderStorageBufferArrayNonUniformIndexing) ||
-            (requiredDevice12Features->shaderStorageImageArrayNonUniformIndexing && !supported12Features.shaderStorageImageArrayNonUniformIndexing) ||
-            (requiredDevice12Features->shaderInputAttachmentArrayNonUniformIndexing && !supported12Features.shaderInputAttachmentArrayNonUniformIndexing) ||
-            (requiredDevice12Features->shaderUniformTexelBufferArrayNonUniformIndexing && !supported12Features.shaderUniformTexelBufferArrayNonUniformIndexing) ||
-            (requiredDevice12Features->shaderStorageTexelBufferArrayNonUniformIndexing && !supported12Features.shaderStorageTexelBufferArrayNonUniformIndexing) ||
-            (requiredDevice12Features->descriptorBindingUniformBufferUpdateAfterBind && !supported12Features.descriptorBindingUniformBufferUpdateAfterBind) ||
-            (requiredDevice12Features->descriptorBindingSampledImageUpdateAfterBind && !supported12Features.descriptorBindingSampledImageUpdateAfterBind) ||
-            (requiredDevice12Features->descriptorBindingStorageImageUpdateAfterBind && !supported12Features.descriptorBindingStorageImageUpdateAfterBind) ||
-            (requiredDevice12Features->descriptorBindingStorageBufferUpdateAfterBind && !supported12Features.descriptorBindingStorageBufferUpdateAfterBind) ||
-            (requiredDevice12Features->descriptorBindingUniformTexelBufferUpdateAfterBind && !supported12Features.descriptorBindingUniformTexelBufferUpdateAfterBind) ||
-            (requiredDevice12Features->descriptorBindingStorageTexelBufferUpdateAfterBind && !supported12Features.descriptorBindingStorageTexelBufferUpdateAfterBind) ||
-            (requiredDevice12Features->descriptorBindingUpdateUnusedWhilePending && !supported12Features.descriptorBindingUpdateUnusedWhilePending) ||
-            (requiredDevice12Features->descriptorBindingPartiallyBound && !supported12Features.descriptorBindingPartiallyBound) ||
-            (requiredDevice12Features->descriptorBindingVariableDescriptorCount && !supported12Features.descriptorBindingVariableDescriptorCount) ||
-            (requiredDevice12Features->runtimeDescriptorArray && !supported12Features.runtimeDescriptorArray) ||
-            (requiredDevice12Features->samplerFilterMinmax && !supported12Features.samplerFilterMinmax) ||
-            (requiredDevice12Features->scalarBlockLayout && !supported12Features.scalarBlockLayout) ||
-            (requiredDevice12Features->imagelessFramebuffer && !supported12Features.imagelessFramebuffer) ||
-            (requiredDevice12Features->uniformBufferStandardLayout && !supported12Features.uniformBufferStandardLayout) ||
-            (requiredDevice12Features->shaderSubgroupExtendedTypes && !supported12Features.shaderSubgroupExtendedTypes) ||
-            (requiredDevice12Features->separateDepthStencilLayouts && !supported12Features.separateDepthStencilLayouts) ||
-            (requiredDevice12Features->hostQueryReset && !supported12Features.hostQueryReset) ||
-            (requiredDevice12Features->timelineSemaphore && !supported12Features.timelineSemaphore) ||
-            (requiredDevice12Features->bufferDeviceAddress && !supported12Features.bufferDeviceAddress) ||
-            (requiredDevice12Features->bufferDeviceAddressCaptureReplay && !supported12Features.bufferDeviceAddressCaptureReplay) ||
-            (requiredDevice12Features->bufferDeviceAddressMultiDevice && !supported12Features.bufferDeviceAddressMultiDevice) ||
-            (requiredDevice12Features->vulkanMemoryModel && !supported12Features.vulkanMemoryModel) ||
-            (requiredDevice12Features->vulkanMemoryModelDeviceScope && !supported12Features.vulkanMemoryModelDeviceScope) ||
-            (requiredDevice12Features->vulkanMemoryModelAvailabilityVisibilityChains && !supported12Features.vulkanMemoryModelAvailabilityVisibilityChains) ||
-            (requiredDevice12Features->shaderOutputViewportIndex && !supported12Features.shaderOutputViewportIndex) ||
-            (requiredDevice12Features->shaderOutputLayer && !supported12Features.shaderOutputLayer) ||
-            (requiredDevice12Features->subgroupBroadcastDynamicId && !supported12Features.subgroupBroadcastDynamicId))
-            {
-                supportsAllFeatures = false;
-            }
-            // clang-format on
-        }
-
-        if (supportsAllFeatures && requiredDevice13Features) {
-            // clang-format off
-            if ((deviceApiVersion < vk::ApiVersion13) ||
-            (requiredDevice13Features->robustImageAccess && !supported13Features.robustImageAccess) ||
-            (requiredDevice13Features->inlineUniformBlock && !supported13Features.inlineUniformBlock) ||
-            (requiredDevice13Features->descriptorBindingInlineUniformBlockUpdateAfterBind && !supported13Features.descriptorBindingInlineUniformBlockUpdateAfterBind) ||
-            (requiredDevice13Features->pipelineCreationCacheControl && !supported13Features.pipelineCreationCacheControl) ||
-            (requiredDevice13Features->privateData && !supported13Features.privateData) ||
-            (requiredDevice13Features->shaderDemoteToHelperInvocation && !supported13Features.shaderDemoteToHelperInvocation) ||
-            (requiredDevice13Features->shaderTerminateInvocation && !supported13Features.shaderTerminateInvocation) ||
-            (requiredDevice13Features->subgroupSizeControl && !supported13Features.subgroupSizeControl) ||
-            (requiredDevice13Features->computeFullSubgroups && !supported13Features.computeFullSubgroups) ||
-            (requiredDevice13Features->synchronization2 && !supported13Features.synchronization2) ||
-            (requiredDevice13Features->textureCompressionASTC_HDR && !supported13Features.textureCompressionASTC_HDR) ||
-            (requiredDevice13Features->shaderZeroInitializeWorkgroupMemory && !supported13Features.shaderZeroInitializeWorkgroupMemory) ||
-            (requiredDevice13Features->dynamicRendering && !supported13Features.dynamicRendering) ||
-            (requiredDevice13Features->shaderIntegerDotProduct && !supported13Features.shaderIntegerDotProduct) ||
-            (requiredDevice13Features->maintenance4 && !supported13Features.maintenance4))
-            {
-                supportsAllFeatures = false;
-            }
-            // clang-format on
-        }
+        bool supportsAllFeatures = supportsRequiredDeviceFeatures(pd,
+                                                                  requiredDevice10Features,
+                                                                  requiredDevice11Features,
+                                                                  requiredDevice12Features,
+                                                                  requiredDevice13Features);
 
         if (graphicsFamilyIndex && presentFamilyIndex && supportsAllExtensions && supportsAllFeatures) {
             m_physicalDevice = pd;
@@ -714,6 +540,199 @@ void VulkanGraphicsContext::recreateSwapchain()
         m_swapchainImageViews[i] = m_device->createImageViewUnique(imageViewCreateInfo);
     }
     TRACE("Successfully retrieved swapchain image views\n");
+}
+
+static bool supportsRequiredDeviceFeatures(vk::PhysicalDevice physicalDevice,
+                                           const vk::PhysicalDeviceFeatures* requiredDevice10Features,
+                                           const vk::PhysicalDeviceVulkan11Features* requiredDevice11Features,
+                                           const vk::PhysicalDeviceVulkan12Features* requiredDevice12Features,
+                                           const vk::PhysicalDeviceVulkan13Features* requiredDevice13Features)
+{
+    auto deviceApiVersion = physicalDevice.getProperties().apiVersion;
+
+    vk::PhysicalDeviceFeatures2 chain;
+    auto& supported10Features = chain.features;
+    vk::PhysicalDeviceVulkan11Features supported11Features;
+    vk::PhysicalDeviceVulkan12Features supported12Features;
+    vk::PhysicalDeviceVulkan13Features supported13Features;
+
+    if (deviceApiVersion >= vk::ApiVersion11) {
+        chain.pNext = &supported11Features;
+        if (deviceApiVersion >= vk::ApiVersion12) {
+            supported11Features.pNext = &supported12Features;
+            if (deviceApiVersion >= vk::ApiVersion13) {
+                supported12Features.pNext = &supported13Features;
+            }
+        }
+    }
+
+    physicalDevice.getFeatures2(&chain);
+
+    bool supportsAllFeatures = true;
+    if (requiredDevice10Features) {
+        // clang-format off
+        if ((requiredDevice10Features->robustBufferAccess && !supported10Features.robustBufferAccess) ||
+        (requiredDevice10Features->fullDrawIndexUint32 && !supported10Features.fullDrawIndexUint32) ||
+        (requiredDevice10Features->imageCubeArray && !supported10Features.imageCubeArray) ||
+        (requiredDevice10Features->independentBlend && !supported10Features.independentBlend) ||
+        (requiredDevice10Features->geometryShader && !supported10Features.geometryShader) ||
+        (requiredDevice10Features->tessellationShader && !supported10Features.tessellationShader) ||
+        (requiredDevice10Features->sampleRateShading && !supported10Features.sampleRateShading) ||
+        (requiredDevice10Features->dualSrcBlend && !supported10Features.dualSrcBlend) ||
+        (requiredDevice10Features->logicOp && !supported10Features.logicOp) ||
+        (requiredDevice10Features->multiDrawIndirect && !supported10Features.multiDrawIndirect) ||
+        (requiredDevice10Features->drawIndirectFirstInstance && !supported10Features.drawIndirectFirstInstance) ||
+        (requiredDevice10Features->depthClamp && !supported10Features.depthClamp) ||
+        (requiredDevice10Features->depthBiasClamp && !supported10Features.depthBiasClamp) ||
+        (requiredDevice10Features->fillModeNonSolid && !supported10Features.fillModeNonSolid) ||
+        (requiredDevice10Features->depthBounds && !supported10Features.depthBounds) ||
+        (requiredDevice10Features->wideLines && !supported10Features.wideLines) ||
+        (requiredDevice10Features->largePoints && !supported10Features.largePoints) ||
+        (requiredDevice10Features->alphaToOne && !supported10Features.alphaToOne) ||
+        (requiredDevice10Features->multiViewport && !supported10Features.multiViewport) ||
+        (requiredDevice10Features->samplerAnisotropy && !supported10Features.samplerAnisotropy) ||
+        (requiredDevice10Features->textureCompressionETC2 && !supported10Features.textureCompressionETC2) ||
+        (requiredDevice10Features->textureCompressionASTC_LDR && !supported10Features.textureCompressionASTC_LDR) ||
+        (requiredDevice10Features->textureCompressionBC && !supported10Features.textureCompressionBC) ||
+        (requiredDevice10Features->occlusionQueryPrecise && !supported10Features.occlusionQueryPrecise) ||
+        (requiredDevice10Features->pipelineStatisticsQuery && !supported10Features.pipelineStatisticsQuery) ||
+        (requiredDevice10Features->vertexPipelineStoresAndAtomics && !supported10Features.vertexPipelineStoresAndAtomics) ||
+        (requiredDevice10Features->fragmentStoresAndAtomics && !supported10Features.fragmentStoresAndAtomics) ||
+        (requiredDevice10Features->shaderTessellationAndGeometryPointSize && !supported10Features.shaderTessellationAndGeometryPointSize) ||
+        (requiredDevice10Features->shaderImageGatherExtended && !supported10Features.shaderImageGatherExtended) ||
+        (requiredDevice10Features->shaderStorageImageExtendedFormats && !supported10Features.shaderStorageImageExtendedFormats) ||
+        (requiredDevice10Features->shaderStorageImageMultisample && !supported10Features.shaderStorageImageMultisample) ||
+        (requiredDevice10Features->shaderStorageImageReadWithoutFormat && !supported10Features.shaderStorageImageReadWithoutFormat) ||
+        (requiredDevice10Features->shaderStorageImageWriteWithoutFormat && !supported10Features.shaderStorageImageWriteWithoutFormat) ||
+        (requiredDevice10Features->shaderUniformBufferArrayDynamicIndexing && !supported10Features.shaderUniformBufferArrayDynamicIndexing) ||
+        (requiredDevice10Features->shaderSampledImageArrayDynamicIndexing && !supported10Features.shaderSampledImageArrayDynamicIndexing) ||
+        (requiredDevice10Features->shaderStorageBufferArrayDynamicIndexing && !supported10Features.shaderStorageBufferArrayDynamicIndexing) ||
+        (requiredDevice10Features->shaderStorageImageArrayDynamicIndexing && !supported10Features.shaderStorageImageArrayDynamicIndexing) ||
+        (requiredDevice10Features->shaderClipDistance && !supported10Features.shaderClipDistance) ||
+        (requiredDevice10Features->shaderCullDistance && !supported10Features.shaderCullDistance) ||
+        (requiredDevice10Features->shaderFloat64 && !supported10Features.shaderFloat64) ||
+        (requiredDevice10Features->shaderInt64 && !supported10Features.shaderInt64) ||
+        (requiredDevice10Features->shaderInt16 && !supported10Features.shaderInt16) ||
+        (requiredDevice10Features->shaderResourceResidency && !supported10Features.shaderResourceResidency) ||
+        (requiredDevice10Features->shaderResourceMinLod && !supported10Features.shaderResourceMinLod) ||
+        (requiredDevice10Features->sparseBinding && !supported10Features.sparseBinding) ||
+        (requiredDevice10Features->sparseResidencyBuffer && !supported10Features.sparseResidencyBuffer) ||
+        (requiredDevice10Features->sparseResidencyImage2D && !supported10Features.sparseResidencyImage2D) ||
+        (requiredDevice10Features->sparseResidencyImage3D && !supported10Features.sparseResidencyImage3D) ||
+        (requiredDevice10Features->sparseResidency2Samples && !supported10Features.sparseResidency2Samples) ||
+        (requiredDevice10Features->sparseResidency4Samples && !supported10Features.sparseResidency4Samples) ||
+        (requiredDevice10Features->sparseResidency8Samples && !supported10Features.sparseResidency8Samples) ||
+        (requiredDevice10Features->sparseResidency16Samples && !supported10Features.sparseResidency16Samples) ||
+        (requiredDevice10Features->sparseResidencyAliased && !supported10Features.sparseResidencyAliased) ||
+        (requiredDevice10Features->variableMultisampleRate && !supported10Features.variableMultisampleRate) ||
+        (requiredDevice10Features->inheritedQueries && !supported10Features.inheritedQueries))
+        {
+            supportsAllFeatures = false;
+        }
+        // clang-format on
+    }
+
+    if (supportsAllFeatures && requiredDevice11Features) {
+        // clang-format off
+        if ((deviceApiVersion < vk::ApiVersion11) ||
+        (requiredDevice11Features->storageBuffer16BitAccess && !supported11Features.storageBuffer16BitAccess) ||
+        (requiredDevice11Features->uniformAndStorageBuffer16BitAccess && !supported11Features.uniformAndStorageBuffer16BitAccess) ||
+        (requiredDevice11Features->storagePushConstant16 && !supported11Features.storagePushConstant16) ||
+        (requiredDevice11Features->storageInputOutput16 && !supported11Features.storageInputOutput16) ||
+        (requiredDevice11Features->multiview && !supported11Features.multiview) ||
+        (requiredDevice11Features->multiviewGeometryShader && !supported11Features.multiviewGeometryShader) ||
+        (requiredDevice11Features->multiviewTessellationShader && !supported11Features.multiviewTessellationShader) ||
+        (requiredDevice11Features->variablePointersStorageBuffer && !supported11Features.variablePointersStorageBuffer) ||
+        (requiredDevice11Features->variablePointers && !supported11Features.variablePointers) ||
+        (requiredDevice11Features->protectedMemory && !supported11Features.protectedMemory) ||
+        (requiredDevice11Features->samplerYcbcrConversion && !supported11Features.samplerYcbcrConversion) ||
+        (requiredDevice11Features->shaderDrawParameters && !supported11Features.shaderDrawParameters))
+        {
+            supportsAllFeatures = false;
+        }
+        // clang-format on
+    }
+
+    if (supportsAllFeatures && requiredDevice12Features) {
+        // clang-format off
+        if ((deviceApiVersion < vk::ApiVersion12) ||
+        (requiredDevice12Features->samplerMirrorClampToEdge && !supported12Features.samplerMirrorClampToEdge) ||
+        (requiredDevice12Features->drawIndirectCount && !supported12Features.drawIndirectCount) ||
+        (requiredDevice12Features->storageBuffer8BitAccess && !supported12Features.storageBuffer8BitAccess) ||
+        (requiredDevice12Features->uniformAndStorageBuffer8BitAccess && !supported12Features.uniformAndStorageBuffer8BitAccess) ||
+        (requiredDevice12Features->storagePushConstant8 && !supported12Features.storagePushConstant8) ||
+        (requiredDevice12Features->shaderBufferInt64Atomics && !supported12Features.shaderBufferInt64Atomics) ||
+        (requiredDevice12Features->shaderSharedInt64Atomics && !supported12Features.shaderSharedInt64Atomics) ||
+        (requiredDevice12Features->shaderFloat16 && !supported12Features.shaderFloat16) ||
+        (requiredDevice12Features->shaderInt8 && !supported12Features.shaderInt8) ||
+        (requiredDevice12Features->descriptorIndexing && !supported12Features.descriptorIndexing) ||
+        (requiredDevice12Features->shaderInputAttachmentArrayDynamicIndexing && !supported12Features.shaderInputAttachmentArrayDynamicIndexing) ||
+        (requiredDevice12Features->shaderUniformTexelBufferArrayDynamicIndexing && !supported12Features.shaderUniformTexelBufferArrayDynamicIndexing) ||
+        (requiredDevice12Features->shaderStorageTexelBufferArrayDynamicIndexing && !supported12Features.shaderStorageTexelBufferArrayDynamicIndexing) ||
+        (requiredDevice12Features->shaderUniformBufferArrayNonUniformIndexing && !supported12Features.shaderUniformBufferArrayNonUniformIndexing) ||
+        (requiredDevice12Features->shaderSampledImageArrayNonUniformIndexing && !supported12Features.shaderSampledImageArrayNonUniformIndexing) ||
+        (requiredDevice12Features->shaderStorageBufferArrayNonUniformIndexing && !supported12Features.shaderStorageBufferArrayNonUniformIndexing) ||
+        (requiredDevice12Features->shaderStorageImageArrayNonUniformIndexing && !supported12Features.shaderStorageImageArrayNonUniformIndexing) ||
+        (requiredDevice12Features->shaderInputAttachmentArrayNonUniformIndexing && !supported12Features.shaderInputAttachmentArrayNonUniformIndexing) ||
+        (requiredDevice12Features->shaderUniformTexelBufferArrayNonUniformIndexing && !supported12Features.shaderUniformTexelBufferArrayNonUniformIndexing) ||
+        (requiredDevice12Features->shaderStorageTexelBufferArrayNonUniformIndexing && !supported12Features.shaderStorageTexelBufferArrayNonUniformIndexing) ||
+        (requiredDevice12Features->descriptorBindingUniformBufferUpdateAfterBind && !supported12Features.descriptorBindingUniformBufferUpdateAfterBind) ||
+        (requiredDevice12Features->descriptorBindingSampledImageUpdateAfterBind && !supported12Features.descriptorBindingSampledImageUpdateAfterBind) ||
+        (requiredDevice12Features->descriptorBindingStorageImageUpdateAfterBind && !supported12Features.descriptorBindingStorageImageUpdateAfterBind) ||
+        (requiredDevice12Features->descriptorBindingStorageBufferUpdateAfterBind && !supported12Features.descriptorBindingStorageBufferUpdateAfterBind) ||
+        (requiredDevice12Features->descriptorBindingUniformTexelBufferUpdateAfterBind && !supported12Features.descriptorBindingUniformTexelBufferUpdateAfterBind) ||
+        (requiredDevice12Features->descriptorBindingStorageTexelBufferUpdateAfterBind && !supported12Features.descriptorBindingStorageTexelBufferUpdateAfterBind) ||
+        (requiredDevice12Features->descriptorBindingUpdateUnusedWhilePending && !supported12Features.descriptorBindingUpdateUnusedWhilePending) ||
+        (requiredDevice12Features->descriptorBindingPartiallyBound && !supported12Features.descriptorBindingPartiallyBound) ||
+        (requiredDevice12Features->descriptorBindingVariableDescriptorCount && !supported12Features.descriptorBindingVariableDescriptorCount) ||
+        (requiredDevice12Features->runtimeDescriptorArray && !supported12Features.runtimeDescriptorArray) ||
+        (requiredDevice12Features->samplerFilterMinmax && !supported12Features.samplerFilterMinmax) ||
+        (requiredDevice12Features->scalarBlockLayout && !supported12Features.scalarBlockLayout) ||
+        (requiredDevice12Features->imagelessFramebuffer && !supported12Features.imagelessFramebuffer) ||
+        (requiredDevice12Features->uniformBufferStandardLayout && !supported12Features.uniformBufferStandardLayout) ||
+        (requiredDevice12Features->shaderSubgroupExtendedTypes && !supported12Features.shaderSubgroupExtendedTypes) ||
+        (requiredDevice12Features->separateDepthStencilLayouts && !supported12Features.separateDepthStencilLayouts) ||
+        (requiredDevice12Features->hostQueryReset && !supported12Features.hostQueryReset) ||
+        (requiredDevice12Features->timelineSemaphore && !supported12Features.timelineSemaphore) ||
+        (requiredDevice12Features->bufferDeviceAddress && !supported12Features.bufferDeviceAddress) ||
+        (requiredDevice12Features->bufferDeviceAddressCaptureReplay && !supported12Features.bufferDeviceAddressCaptureReplay) ||
+        (requiredDevice12Features->bufferDeviceAddressMultiDevice && !supported12Features.bufferDeviceAddressMultiDevice) ||
+        (requiredDevice12Features->vulkanMemoryModel && !supported12Features.vulkanMemoryModel) ||
+        (requiredDevice12Features->vulkanMemoryModelDeviceScope && !supported12Features.vulkanMemoryModelDeviceScope) ||
+        (requiredDevice12Features->vulkanMemoryModelAvailabilityVisibilityChains && !supported12Features.vulkanMemoryModelAvailabilityVisibilityChains) ||
+        (requiredDevice12Features->shaderOutputViewportIndex && !supported12Features.shaderOutputViewportIndex) ||
+        (requiredDevice12Features->shaderOutputLayer && !supported12Features.shaderOutputLayer) ||
+        (requiredDevice12Features->subgroupBroadcastDynamicId && !supported12Features.subgroupBroadcastDynamicId))
+        {
+            supportsAllFeatures = false;
+        }
+        // clang-format on
+    }
+
+    if (supportsAllFeatures && requiredDevice13Features) {
+        // clang-format off
+        if ((deviceApiVersion < vk::ApiVersion13) ||
+        (requiredDevice13Features->robustImageAccess && !supported13Features.robustImageAccess) ||
+        (requiredDevice13Features->inlineUniformBlock && !supported13Features.inlineUniformBlock) ||
+        (requiredDevice13Features->descriptorBindingInlineUniformBlockUpdateAfterBind && !supported13Features.descriptorBindingInlineUniformBlockUpdateAfterBind) ||
+        (requiredDevice13Features->pipelineCreationCacheControl && !supported13Features.pipelineCreationCacheControl) ||
+        (requiredDevice13Features->privateData && !supported13Features.privateData) ||
+        (requiredDevice13Features->shaderDemoteToHelperInvocation && !supported13Features.shaderDemoteToHelperInvocation) ||
+        (requiredDevice13Features->shaderTerminateInvocation && !supported13Features.shaderTerminateInvocation) ||
+        (requiredDevice13Features->subgroupSizeControl && !supported13Features.subgroupSizeControl) ||
+        (requiredDevice13Features->computeFullSubgroups && !supported13Features.computeFullSubgroups) ||
+        (requiredDevice13Features->synchronization2 && !supported13Features.synchronization2) ||
+        (requiredDevice13Features->textureCompressionASTC_HDR && !supported13Features.textureCompressionASTC_HDR) ||
+        (requiredDevice13Features->shaderZeroInitializeWorkgroupMemory && !supported13Features.shaderZeroInitializeWorkgroupMemory) ||
+        (requiredDevice13Features->dynamicRendering && !supported13Features.dynamicRendering) ||
+        (requiredDevice13Features->shaderIntegerDotProduct && !supported13Features.shaderIntegerDotProduct) ||
+        (requiredDevice13Features->maintenance4 && !supported13Features.maintenance4))
+        {
+            supportsAllFeatures = false;
+        }
+        // clang-format on
+    }
+    return supportsAllFeatures;
 }
 
 }   // namespace core
