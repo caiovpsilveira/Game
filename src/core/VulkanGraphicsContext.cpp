@@ -295,11 +295,6 @@ void VulkanGraphicsContext::searchPhysicalDevice(std::span<const char* const> re
 
         if (graphicsFamilyIndex && presentFamilyIndex && transferFamilyIndex && supportsAllExtensions &&
             supportsAllFeatures) {
-            m_physicalDevice = pd;
-            m_queueFamiliesIndices.graphicsFamilyIndex = *graphicsFamilyIndex;
-            m_queueFamiliesIndices.presentFamilyIndex = *presentFamilyIndex;
-            m_queueFamiliesIndices.transferFamilyIndex = *transferFamilyIndex;
-
             auto pdProperties = pd.getProperties();
             DEBUG_FMT(
                 "Successfully encountered a suitable physical device.\nName: {}\nApi version: v{} {}.{}.{}\nDriver "
@@ -310,6 +305,15 @@ void VulkanGraphicsContext::searchPhysicalDevice(std::span<const char* const> re
                 vk::apiVersionMinor(pdProperties.apiVersion),
                 vk::apiVersionPatch(pdProperties.apiVersion),
                 pdProperties.driverVersion);
+
+            m_physicalDevice = pd;
+            m_queueFamiliesIndices.graphicsFamilyIndex = *graphicsFamilyIndex;
+            m_queueFamiliesIndices.presentFamilyIndex = *presentFamilyIndex;
+            m_queueFamiliesIndices.transferFamilyIndex = *transferFamilyIndex;
+            DEBUG_FMT("Queue families indices: graphics {}, present {}, transfer {}\n",
+                      m_queueFamiliesIndices.graphicsFamilyIndex,
+                      m_queueFamiliesIndices.presentFamilyIndex,
+                      m_queueFamiliesIndices.transferFamilyIndex);
 
             return;
         }
