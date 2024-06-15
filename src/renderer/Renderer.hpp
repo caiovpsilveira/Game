@@ -13,7 +13,15 @@ class Renderer
 {
 public:
     Renderer() noexcept = default;
-    Renderer(SDL_Window* window);
+    explicit Renderer(SDL_Window* window);
+
+    Renderer(const Renderer&) = delete;
+    Renderer& operator=(const Renderer&) = delete;
+
+    Renderer(Renderer&&) noexcept = default;
+    Renderer& operator=(Renderer&&) noexcept = default;
+
+    ~Renderer() noexcept = default;
 
 public:
     void drawFrame();

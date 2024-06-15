@@ -69,6 +69,14 @@ public:
     Mesh() noexcept = default;
     Mesh(vk::Device device, VmaAllocator allocator, vk::DeviceSize vertexBufferSize, vk::DeviceSize indexBufferSize);
 
+    Mesh(const Mesh&) = delete;
+    Mesh& operator=(const Mesh&) = delete;
+
+    Mesh(Mesh&&) noexcept = default;
+    Mesh& operator=(Mesh&&) = default;
+
+    ~Mesh() noexcept = default;
+
 public:
     vk::Buffer vertexBuffer() const noexcept { return m_vertexBuffer.buffer(); }
     vk::Buffer indexBuffer() const noexcept { return m_indexBuffer.buffer(); }

@@ -16,13 +16,13 @@ public:
     GraphicsPipelineBuilder() = delete;
     explicit GraphicsPipelineBuilder(vk::Device device) noexcept;
 
-    ~GraphicsPipelineBuilder() noexcept = default;
-
     GraphicsPipelineBuilder(const GraphicsPipelineBuilder&) = delete;
     GraphicsPipelineBuilder& operator=(const GraphicsPipelineBuilder&) = delete;
 
     GraphicsPipelineBuilder(GraphicsPipelineBuilder&&) = delete;
     GraphicsPipelineBuilder& operator=(GraphicsPipelineBuilder&&) = delete;
+
+    ~GraphicsPipelineBuilder() noexcept = default;
 
 public:
     void setShaders(const std::filesystem::path& vertexShaderSourcePath,
