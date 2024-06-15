@@ -156,11 +156,11 @@ void Game::uploadMesh()
                                                        .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
                                                        .pInheritanceInfo = nullptr};
 
-    m_transferData.commandBuffer->begin(commandBufferBeginInfo);
+    commandBuffer.begin(commandBufferBeginInfo);
 
     m_testMesh = renderer::Mesh(device, commandBuffer, m_vkContext.allocator(), vertices, indices);
 
-    m_transferData.commandBuffer->end();
+    commandBuffer.end();
 
     vk::CommandBufferSubmitInfo commandBufferSubmitInfo {.sType = vk::StructureType::eCommandBufferSubmitInfo,
                                                          .pNext = nullptr,
