@@ -9,7 +9,6 @@
 // std
 #include <array>
 #include <cstdint>
-#include <span>
 
 namespace renderer
 {
@@ -54,16 +53,18 @@ class Mesh
 {
 public:
     Mesh() noexcept = default;
-    Mesh(vk::Device device,
-         vk::CommandBuffer transferCmd,
-         VmaAllocator allocator,
-         std::span<const Vertex> vertices,
-         std::span<const uint32_t> indices);
+    Mesh(vk::Device device, VmaAllocator allocator, vk::DeviceSize vertexBufferSize, vk::DeviceSize indexBufferSize);
+
+public:
+    vk::Buffer vertexBuffer() const noexcept { return m_vertexBuffer.buffer(); }
+    vk::Buffer indexBuffer() const noexcept { return m_indexBuffer.buffer(); }
+    uint32_t numIndices() const noexcept { return m_numIndices; }
 
 private:
     AllocatedBuffer m_vertexBuffer;
     vk::DeviceAddress m_vertexBufferAddress;
     AllocatedBuffer m_indexBuffer;
+    uint32_t m_numIndices;
 };
 
 }   // namespace renderer

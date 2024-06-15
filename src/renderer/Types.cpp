@@ -89,16 +89,11 @@ AllocatedBuffer::~AllocatedBuffer() noexcept
 // End AllocatedBuffer
 
 // Begin Mesh
-Mesh::Mesh(vk::Device device,
-           vk::CommandBuffer transferCmd,
-           VmaAllocator allocator,
-           std::span<const Vertex> vertices,
-           std::span<const uint32_t> indices)
+Mesh::Mesh(vk::Device device, VmaAllocator allocator, vk::DeviceSize vertexBufferSize, vk::DeviceSize indexBufferSize)
 {
-    // Allocate device buffers
-    const vk::DeviceSize vertexBufferSize = std::size(vertices) * sizeof(vertices[0]);
-    const vk::DeviceSize indexBufferSize = std::size(indices) * sizeof(indices[0]);
+    m_numIndices = indexBufferSize / sizeof(uint32_t);
 
+    // Allocate device buffers
     m_vertexBuffer = AllocatedBuffer(allocator,
                                      vertexBufferSize,
                                      vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst |
@@ -117,31 +112,8 @@ Mesh::Mesh(vk::Device device,
                                                          .pNext = nullptr,
                                                          .buffer = m_vertexBuffer.buffer()};
     m_vertexBufferAddress = device.getBufferAddress(bufferDeviceAddressInfo);
-
-    // Copy vertex and index buffer data from host to a device staging buffer
-    // The staging buffer will be a contiguous buffer containing [vertexBufferData, indexBufferData]
-    AllocatedBuffer stagingBuffer(allocator,
-                                  vertexBufferSize + indexBufferSize,
-                                  vk::BufferUsageFlagBits::eTransferSrc,
-                                  VMA_ALLOCATION_CREATE_MAPPED_BIT |
-                                      VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
-                                  VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE);
-
-    VmaAllocationInfo stagingAllocationInfo;
-    vmaGetAllocationInfo(allocator, stagingBuffer.allocation(), &stagingAllocationInfo);
-    auto& stagingData = stagingAllocationInfo.pMappedData;
-    // copy vertex buffer data
-    std::memcpy(stagingData, vertices.data(), vertexBufferSize);
-    // copy index buffer data
-    std::memcpy((char*) stagingData + vertexBufferSize, indices.data(), indexBufferSize);
-
-    // Copy the device staging buffer data to the device vertex buffer and index buffer
-    vk::BufferCopy vertexCopyRegion {.srcOffset = 0, .dstOffset = 0, .size = vertexBufferSize};
-    transferCmd.copyBuffer(stagingBuffer.buffer(), m_vertexBuffer.buffer(), vertexCopyRegion);
-
-    vk::BufferCopy indexCopyRegion {.srcOffset = vertexBufferSize, .dstOffset = 0, .size = indexBufferSize};
-    transferCmd.copyBuffer(stagingBuffer.buffer(), m_indexBuffer.buffer(), indexCopyRegion);
 }
+
 // End Mesh
 
 }   // namespace renderer

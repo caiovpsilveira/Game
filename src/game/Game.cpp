@@ -143,9 +143,32 @@ void Game::initFrameData()
 void Game::uploadMesh()
 {
     const auto& device = m_vkContext.device();
+    const auto& allocator = m_vkContext.allocator();
     const auto& commandBuffer = *m_transferData.commandBuffer;
     const auto& fence = *m_transferData.fence;
 
+    const vk::DeviceSize vertexBufferSize = vertices.size() * sizeof(vertices[0]);
+    const vk::DeviceSize indexBufferSize = indices.size() * sizeof(indices[0]);
+
+    m_testMesh = renderer::Mesh(device, allocator, vertexBufferSize, indexBufferSize);
+
+    // create staging buffer, contiguous memory containing [vertexBufferData, indexBufferData]
+    renderer::AllocatedBuffer stagingBuffer(allocator,
+                                            vertexBufferSize + indexBufferSize,
+                                            vk::BufferUsageFlagBits::eTransferSrc,
+                                            VMA_ALLOCATION_CREATE_MAPPED_BIT |
+                                                VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+                                            VMA_MEMORY_USAGE_AUTO);
+
+    VmaAllocationInfo stagingAllocationInfo;
+    vmaGetAllocationInfo(allocator, stagingBuffer.allocation(), &stagingAllocationInfo);
+    auto& stagingData = stagingAllocationInfo.pMappedData;
+    // copy vertex buffer data
+    std::memcpy(stagingData, vertices.data(), vertexBufferSize);
+    // copy index buffer data
+    std::memcpy((char*) stagingData + vertexBufferSize, indices.data(), indexBufferSize);
+
+    // Record vkCmdCopyBuffer from staging buffer to device mesh vertex buffer and index buffer
     [[maybe_unused]] auto fenceRes = device.waitForFences(fence, true, std::numeric_limits<uint64_t>::max());
     device.resetFences(fence);
 
@@ -158,10 +181,15 @@ void Game::uploadMesh()
 
     commandBuffer.begin(commandBufferBeginInfo);
 
-    m_testMesh = renderer::Mesh(device, commandBuffer, m_vkContext.allocator(), vertices, indices);
+    vk::BufferCopy vertexCopyRegion {.srcOffset = 0, .dstOffset = 0, .size = vertexBufferSize};
+    commandBuffer.copyBuffer(stagingBuffer.buffer(), m_testMesh.vertexBuffer(), vertexCopyRegion);
+
+    vk::BufferCopy indexCopyRegion {.srcOffset = vertexBufferSize, .dstOffset = 0, .size = indexBufferSize};
+    commandBuffer.copyBuffer(stagingBuffer.buffer(), m_testMesh.indexBuffer(), indexCopyRegion);
 
     commandBuffer.end();
 
+    // Submit and wait
     vk::CommandBufferSubmitInfo commandBufferSubmitInfo {.sType = vk::StructureType::eCommandBufferSubmitInfo,
                                                          .pNext = nullptr,
                                                          .commandBuffer = commandBuffer,
@@ -259,7 +287,9 @@ void Game::drawFrame()
     commandBuffer.setScissor(0, scissor);
 
     // draw
-    commandBuffer.draw(3, 1, 0, 0);
+    commandBuffer.bindVertexBuffers(0, m_testMesh.vertexBuffer(), {0});
+    commandBuffer.bindIndexBuffer(m_testMesh.indexBuffer(), 0, vk::IndexType::eUint32);
+    commandBuffer.drawIndexed(m_testMesh.numIndices(), 1, 0, 0, 0);
 
     commandBuffer.endRendering();
 
