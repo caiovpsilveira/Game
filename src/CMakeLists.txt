@@ -6,6 +6,7 @@ target_sources(game PRIVATE
                renderer/Types.cpp
                renderer/Utils.cpp
                renderer/GraphicsPipelineBuilder.cpp
+               renderer/Renderer.cpp
                #
                game/Game.cpp
                #

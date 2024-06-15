@@ -6,8 +6,7 @@
 #include "core/Logger.hpp"
 
 // libs
-#include <SDL.h>
-#include <SDL_video.h>
+#include <SDL_events.h>
 #include <SDL_vulkan.h>
 #include <vulkan/vulkan_to_string.hpp>
 
