@@ -1,6 +1,7 @@
 #include "Utils.hpp"
 
 // std
+#include <cassert>
 #include <cstdint>
 #include <fstream>
 
@@ -39,9 +40,10 @@ std::vector<char> readFile(const std::filesystem::path& path)
     return buffer;
 }
 
-vk::UniqueShaderModule createUniqueShaderModule(vk::Device device, const std::vector<char>& code)
+vk::UniqueShaderModule createUniqueShaderModule(vk::Device device, std::span<const char> code)
 {
-    // vector default allocator ensures that data satisfies the alignment requirements of uint32_t
+    // must be uint32_t alligned to be converted
+    assert(code.size() % sizeof(uint32_t) == 0);
     vk::ShaderModuleCreateInfo createInfo {.sType = vk::StructureType::eShaderModuleCreateInfo,
                                            .pNext = nullptr,
                                            .flags = {},

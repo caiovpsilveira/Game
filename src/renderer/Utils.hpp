@@ -19,7 +19,7 @@ bool containsExtension(std::span<const vk::ExtensionProperties> extensionsProper
 
 std::vector<char> readFile(const std::filesystem::path& path);
 
-vk::UniqueShaderModule createUniqueShaderModule(vk::Device device, const std::vector<char>& code);
+vk::UniqueShaderModule createUniqueShaderModule(vk::Device device, std::span<const char> code);
 
 void transitionImage(vk::CommandBuffer cmd,
                      vk::Image image,
