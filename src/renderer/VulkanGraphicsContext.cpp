@@ -2,8 +2,8 @@
 
 #include "VulkanGraphicsContext.hpp"
 
-#include "Logger.hpp"
 #include "Utils.hpp"
+#include "core/Logger.hpp"
 
 // libs
 #include <SDL.h>
@@ -22,7 +22,7 @@
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
-namespace core
+namespace renderer
 {
 
 namespace
@@ -422,7 +422,7 @@ void VulkanGraphicsContext::createAllocator(uint32_t vulkanApiVersion)
                                                 .vulkanApiVersion = vulkanApiVersion,
                                                 .pTypeExternalMemoryHandleTypes = nullptr};
 
-    m_allocator = UniqueVmaAllocator(allocatorCreateInfo);
+    m_allocator = core::UniqueVmaAllocator(allocatorCreateInfo);
     DEBUG("Successfully created vmaAllocator\n");
 }
 
@@ -757,4 +757,4 @@ static bool supportsRequiredDeviceFeatures(vk::PhysicalDevice physicalDevice,
     return supportsAllFeatures;
 }
 
-}   // namespace core
+}   // namespace renderer

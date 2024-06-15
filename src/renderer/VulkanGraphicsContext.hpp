@@ -1,7 +1,7 @@
-#ifndef CORE_VULKAN_GRAPHICS_CONTEXT_H
-#define CORE_VULKAN_GRAPHICS_CONTEXT_H
+#ifndef RENDERER_VULKAN_GRAPHICS_CONTEXT_H
+#define RENDERER_VULKAN_GRAPHICS_CONTEXT_H
 
-#include "UniqueVmaAllocator.hpp"
+#include "core/UniqueVmaAllocator.hpp"
 
 // libs
 #include <vulkan/vulkan.hpp>
@@ -11,7 +11,7 @@
 
 struct SDL_Window;
 
-namespace core
+namespace renderer
 {
 
 using PFN_presentModeKHRselector = vk::PresentModeKHR (*)(std::span<const vk::PresentModeKHR>);
@@ -127,7 +127,7 @@ private:
     QueueFamiliesIndices m_queueFamiliesIndices;
     vk::UniqueDevice m_device;
     Queues m_queues;
-    UniqueVmaAllocator m_allocator;
+    core::UniqueVmaAllocator m_allocator;
     vk::PresentModeKHR m_currentSwapchainPresentMode;
     vk::SurfaceFormatKHR m_currentSwapchainSurfaceFormat;
     vk::Extent2D m_currentSwapchainExtent;
@@ -136,6 +136,6 @@ private:
     std::vector<vk::UniqueImageView> m_swapchainImageViews;
 };
 
-}   // namespace core
+}   // namespace renderer
 
 #endif

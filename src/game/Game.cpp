@@ -44,7 +44,7 @@ Game::Game()
     features13.dynamicRendering = true;
     features13.synchronization2 = true;
 
-    core::VulkanGraphicsContextCreateInfo createInfo {};
+    renderer::VulkanGraphicsContextCreateInfo createInfo {};
     createInfo.vulkanApiVersion = vk::makeApiVersion(0, 1, 3, 0);
     createInfo.requiredInstanceExtensions = requiredInstanceExtensions;
     createInfo.requiredDeviceExtensions = requiredDeviceExtensions;
@@ -53,18 +53,14 @@ Game::Game()
     createInfo.window = m_window;
     createInfo.requiredDevice12Features = &features12;
     createInfo.requiredDevice13Features = &features13;
-    m_vkContext = core::VulkanGraphicsContext(createInfo);
-
-    createGraphicsPipeline();
-    DEBUG("Successfully created graphics pipeline\n");
-    initTransferData();
-    DEBUG("Successfully created transfer data\n");
-    initFrameData();
-    DEBUG("Successfully created frame data\n");
+    m_vkContext = renderer::VulkanGraphicsContext(createInfo);
 
     // TODO: remove
+    createGraphicsPipeline();
+    initTransferData();
+    initFrameData();
+
     uploadMesh();
-    DEBUG("Successfully uploaded mesh\n");
 }
 
 Game::~Game() noexcept
@@ -79,6 +75,7 @@ void Game::createGraphicsPipeline()
 
     builder.setShaders("../shaders/simple_shader.vert.spv", "../shaders/simple_shader.frag.spv");
     m_graphicsPipeline = builder.build(m_vkContext.swapchainColorFormat());
+    DEBUG("Successfully created graphics pipeline\n");
 }
 
 void Game::initTransferData()
@@ -105,6 +102,7 @@ void Game::initTransferData()
                                          .flags = vk::FenceCreateFlagBits::eSignaled};
 
     m_transferData.fence = device.createFenceUnique(fenceCreateInfo);
+    DEBUG("Successfully created transfer data\n");
 }
 
 void Game::initFrameData()
@@ -138,6 +136,7 @@ void Game::initFrameData()
         m_frameData[i].renderSemaphore = m_vkContext.device().createSemaphoreUnique(semaphoreCreateInfo);
         m_frameData[i].renderFence = m_vkContext.device().createFenceUnique(fenceCreateInfo);
     }
+    DEBUG("Successfully created frame data\n");
 }
 
 void Game::uploadMesh()
@@ -207,6 +206,7 @@ void Game::uploadMesh()
 
     m_vkContext.transferQueue().submit2(submitInfo2, fence);
     fenceRes = device.waitForFences(fence, true, std::numeric_limits<uint64_t>::max());
+    DEBUG("Successfully uploaded mesh\n");
 }
 
 void Game::drawFrame()

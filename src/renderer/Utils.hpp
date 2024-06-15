@@ -6,10 +6,16 @@
 
 // std
 #include <filesystem>
+#include <span>
 #include <vector>
 
 namespace renderer::utils
 {
+
+bool containsExtension(std::span<const char* const> extensionsList, const char* extensionName) noexcept;
+
+bool containsExtension(std::span<const vk::ExtensionProperties> extensionsPropertiesList,
+                       const char* extensionName) noexcept;
 
 std::vector<char> readFile(const std::filesystem::path& path);
 
