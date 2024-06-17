@@ -67,6 +67,8 @@ class Mesh
 {
 public:
     Mesh() noexcept = default;
+    // Only allocates the buffers on the device. The buffers still have to be filled with a staging buffer.
+    // TODO: improve this?
     Mesh(vk::Device device, VmaAllocator allocator, vk::DeviceSize vertexBufferSize, vk::DeviceSize indexBufferSize);
 
     Mesh(const Mesh&) = delete;

@@ -113,7 +113,7 @@ private:
                              vk::PhysicalDeviceVulkan12Features* requiredDevice12Features,
                              vk::PhysicalDeviceVulkan13Features* requiredDevice13Features);
 
-    void createAllocator(uint32_t vulkanApiVersion);
+    void createAllocator(uint32_t vulkanApiVersion, bool useBufferDeviceAddressFeature);
 
     void createSwapchain(PFN_presentModeKHRselector pfnPresentModeKHRselector,
                          PFN_surfaceFormatKHRselector pfnSurfaceFormatKHRselector);

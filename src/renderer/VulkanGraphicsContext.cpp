@@ -144,7 +144,8 @@ VulkanGraphicsContext::VulkanGraphicsContext(const VulkanGraphicsContextCreateIn
                         createInfo.requiredDevice12Features,
                         createInfo.requiredDevice13Features);
 
-    createAllocator(createInfo.vulkanApiVersion);
+    createAllocator(createInfo.vulkanApiVersion,
+                    createInfo.requiredDevice12Features && createInfo.requiredDevice12Features->bufferDeviceAddress);
 
     createSwapchain(createInfo.pfnPresentModeKHRselector, createInfo.pfnSurfaceFormatKHRselector);
 
@@ -401,7 +402,7 @@ void VulkanGraphicsContext::createLogicalDevice(std::span<const char* const> req
     m_queues.transferQueue = m_device->getQueue(m_queueFamiliesIndices.transferFamilyIndex, 0);
 }
 
-void VulkanGraphicsContext::createAllocator(uint32_t vulkanApiVersion)
+void VulkanGraphicsContext::createAllocator(uint32_t vulkanApiVersion, bool useBufferDeviceAddressFeature)
 {
     const auto& d = VULKAN_HPP_DEFAULT_DISPATCHER;
     // Let VMA handle the function pointers loading
@@ -409,7 +410,9 @@ void VulkanGraphicsContext::createAllocator(uint32_t vulkanApiVersion)
     vulkanFunctions.vkGetInstanceProcAddr = d.vkGetInstanceProcAddr;
     vulkanFunctions.vkGetDeviceProcAddr = d.vkGetDeviceProcAddr;
 
-    VmaAllocatorCreateInfo allocatorCreateInfo {.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
+    VmaAllocatorCreateInfo allocatorCreateInfo {.flags = useBufferDeviceAddressFeature
+                                                             ? VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT
+                                                             : static_cast<VmaAllocatorCreateFlags>(0),
                                                 .physicalDevice = m_physicalDevice,
                                                 .device = *m_device,
                                                 .preferredLargeHeapBlockSize = 0,
