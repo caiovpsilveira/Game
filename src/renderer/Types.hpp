@@ -13,24 +13,18 @@
 namespace renderer
 {
 
-struct TransferCommandData {
+struct TransferData {
     vk::UniqueCommandPool commandPool;
     vk::UniqueCommandBuffer commandBuffer;
     vk::UniqueFence fence;
 };
 
-struct FrameCommandData {
+struct FrameData {
     vk::UniqueCommandPool commandPool;
     vk::UniqueCommandBuffer commandBuffer;
     vk::UniqueSemaphore swapchainSemaphore;
     vk::UniqueSemaphore renderSemaphore;
     vk::UniqueFence renderFence;
-};
-
-struct UniformBufferData {
-    glm::mat4 model;
-    glm::mat4 view;
-    glm::mat4 proj;
 };
 
 struct Vertex {
