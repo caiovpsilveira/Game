@@ -28,7 +28,7 @@ struct FrameData {
 };
 
 struct Vertex {
-    glm::vec3 pos;
+    glm::vec2 pos;
     glm::vec3 color;
 
     static vk::VertexInputBindingDescription bindingDescription() noexcept;
