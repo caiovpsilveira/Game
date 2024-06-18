@@ -1,13 +1,17 @@
 #include "Renderer.hpp"
 
+#include "DescriptorSetLayoutBuilder.hpp"
 #include "GraphicsPipelineBuilder.hpp"
 #include "Utils.hpp"
 #include "core/Logger.hpp"
 
 // libs
 #include <SDL_vulkan.h>
+#include <glm/ext/matrix_clip_space.hpp>
+#include <glm/ext/matrix_transform.hpp>
 
 // std
+#include <chrono>
 #include <cstdint>
 #include <limits>
 #include <vector>
@@ -83,21 +87,26 @@ Renderer::Renderer(SDL_Window* window)
     m_vkContext = VulkanGraphicsContext(createInfo);
 
     createGraphicsPipeline();
-    initTransferData();
-    initFrameData();
+    initTransferCommandData();
+    initFrameCommandData();
+    initFrameUBOs();
     uploadMesh();
 }
 
 void Renderer::createGraphicsPipeline()
 {
-    GraphicsPipelineBuilder builder(m_vkContext.device());
+    DescriptorSetLayoutBuilder descriptorSetLayoutBuilder(m_vkContext.device());
+    descriptorSetLayoutBuilder.addBinding(vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex);
+    vk::UniqueDescriptorSetLayout descriptorSetLayout = descriptorSetLayoutBuilder.build();
 
-    builder.setShaders("../shaders/simple_shader.vert.spv", "../shaders/simple_shader.frag.spv");
-    m_graphicsPipeline = builder.build(m_vkContext.swapchainColorFormat());
+    GraphicsPipelineBuilder pipelineBuilder(m_vkContext.device());
+    pipelineBuilder.setShaders("../shaders/simple_shader.vert.spv", "../shaders/simple_shader.frag.spv");
+    pipelineBuilder.addDescriptorSetLayout(std::move(descriptorSetLayout));
+    m_graphicsPipeline = pipelineBuilder.build(m_vkContext.swapchainColorFormat());
     DEBUG("Successfully created graphics pipeline\n");
 }
 
-void Renderer::initTransferData()
+void Renderer::initTransferCommandData()
 {
     const auto& device = m_vkContext.device();
 
@@ -106,25 +115,25 @@ void Renderer::initTransferData()
                                                      .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
                                                      .queueFamilyIndex = m_vkContext.transferQueueFamilyIndex()};
 
-    m_transferData.commandPool = device.createCommandPoolUnique(commandPoolCreateInfo);
+    m_transferCommandData.commandPool = device.createCommandPoolUnique(commandPoolCreateInfo);
 
     vk::CommandBufferAllocateInfo commandBufferAllocateInfo {.sType = vk::StructureType::eCommandBufferAllocateInfo,
                                                              .pNext = nullptr,
-                                                             .commandPool = *m_transferData.commandPool,
+                                                             .commandPool = *m_transferCommandData.commandPool,
                                                              .level = vk::CommandBufferLevel::ePrimary,
                                                              .commandBufferCount = 1};
 
-    m_transferData.commandBuffer = std::move(device.allocateCommandBuffersUnique(commandBufferAllocateInfo)[0]);
+    m_transferCommandData.commandBuffer = std::move(device.allocateCommandBuffersUnique(commandBufferAllocateInfo)[0]);
 
     vk::FenceCreateInfo fenceCreateInfo {.sType = vk::StructureType::eFenceCreateInfo,
                                          .pNext = nullptr,
                                          .flags = vk::FenceCreateFlagBits::eSignaled};
 
-    m_transferData.fence = device.createFenceUnique(fenceCreateInfo);
-    DEBUG("Successfully created transfer data\n");
+    m_transferCommandData.fence = device.createFenceUnique(fenceCreateInfo);
+    DEBUG("Successfully created transfer command data\n");
 }
 
-void Renderer::initFrameData()
+void Renderer::initFrameCommandData()
 {
     vk::CommandPoolCreateInfo commandPoolCreateInfo {.sType = vk::StructureType::eCommandPoolCreateInfo,
                                                      .pNext = nullptr,
@@ -145,17 +154,30 @@ void Renderer::initFrameData()
                                          .pNext = nullptr,
                                          .flags = vk::FenceCreateFlagBits::eSignaled};
 
-    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-        m_frameData[i].commandPool = m_vkContext.device().createCommandPoolUnique(commandPoolCreateInfo);
-        commandBufferAllocateInfo.commandPool = *m_frameData[i].commandPool;
-        m_frameData[i].commandBuffer =
+    for (auto i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        m_frameCommandData[i].commandPool = m_vkContext.device().createCommandPoolUnique(commandPoolCreateInfo);
+        commandBufferAllocateInfo.commandPool = *m_frameCommandData[i].commandPool;
+        m_frameCommandData[i].commandBuffer =
             std::move(m_vkContext.device().allocateCommandBuffersUnique(commandBufferAllocateInfo)[0]);
 
-        m_frameData[i].swapchainSemaphore = m_vkContext.device().createSemaphoreUnique(semaphoreCreateInfo);
-        m_frameData[i].renderSemaphore = m_vkContext.device().createSemaphoreUnique(semaphoreCreateInfo);
-        m_frameData[i].renderFence = m_vkContext.device().createFenceUnique(fenceCreateInfo);
+        m_frameCommandData[i].swapchainSemaphore = m_vkContext.device().createSemaphoreUnique(semaphoreCreateInfo);
+        m_frameCommandData[i].renderSemaphore = m_vkContext.device().createSemaphoreUnique(semaphoreCreateInfo);
+        m_frameCommandData[i].renderFence = m_vkContext.device().createFenceUnique(fenceCreateInfo);
     }
-    DEBUG("Successfully created frame data\n");
+    DEBUG("Successfully created frame command data\n");
+}
+
+void Renderer::initFrameUBOs()
+{
+    for (auto i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        m_frameUBOs[i] =
+            AllocatedBuffer(m_vkContext.allocator(),
+                            sizeof(UniformBufferData),
+                            vk::BufferUsageFlagBits::eUniformBuffer | vk::BufferUsageFlagBits::eTransferDst,
+                            0,
+                            VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE);
+    }
+    DEBUG("Successfully created frame UBOs\n");
 }
 
 void Renderer::uploadMesh()
@@ -166,8 +188,8 @@ void Renderer::uploadMesh()
 
     const auto& device = m_vkContext.device();
     const auto& allocator = m_vkContext.allocator();
-    const auto& commandBuffer = *m_transferData.commandBuffer;
-    const auto& fence = *m_transferData.fence;
+    const auto& commandBuffer = *m_transferCommandData.commandBuffer;
+    const auto& fence = *m_transferCommandData.fence;
 
     const vk::DeviceSize vertexBufferSize = vertices.size() * sizeof(vertices[0]);
     const vk::DeviceSize indexBufferSize = indices.size() * sizeof(indices[0]);
@@ -188,7 +210,7 @@ void Renderer::uploadMesh()
     // copy vertex buffer data
     std::memcpy(stagingData, vertices.data(), vertexBufferSize);
     // copy index buffer data
-    std::memcpy((char*) stagingData + vertexBufferSize, indices.data(), indexBufferSize);
+    std::memcpy(static_cast<char*>(stagingData) + vertexBufferSize, indices.data(), indexBufferSize);
 
     // Record vkCmdCopyBuffer from staging buffer to device mesh vertex buffer and index buffer
     [[maybe_unused]] auto fenceRes = device.waitForFences(fence, true, std::numeric_limits<uint64_t>::max());
@@ -236,8 +258,10 @@ void Renderer::drawFrame()
 {
     const auto& device = m_vkContext.device();
     const auto& swapchain = m_vkContext.swapchain();
-    const auto& frameData = m_frameData[m_frameCount % MAX_FRAMES_IN_FLIGHT];
+    const auto& swapchainExtent = m_vkContext.swapchainExtent();
+    const auto& frameData = m_frameCommandData[m_frameCount % MAX_FRAMES_IN_FLIGHT];
     const auto& commandBuffer = *frameData.commandBuffer;
+    const auto& frameUbo = m_frameUBOs[m_frameCount % MAX_FRAMES_IN_FLIGHT];
 
     [[maybe_unused]] auto fenceRes =
         device.waitForFences(*frameData.renderFence, vk::True, std::numeric_limits<uint64_t>::max());
@@ -251,7 +275,7 @@ void Renderer::drawFrame()
         return;
     }
 
-    // Begin recording and rendering
+    // Begin recording
     commandBuffer.reset();
 
     vk::CommandBufferBeginInfo commandBufferBeginInfo {.sType = vk::StructureType::eCommandBufferBeginInfo,
@@ -261,6 +285,21 @@ void Renderer::drawFrame()
 
     commandBuffer.begin(commandBufferBeginInfo);
 
+    // update UBO
+    static auto startTime = std::chrono::high_resolution_clock::now();
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+    UniformBufferData ubo {};
+    ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.proj = glm::perspective(glm::radians(45.0f),
+                                swapchainExtent.width / static_cast<float>(swapchainExtent.height),
+                                0.1f,
+                                10.0f);
+    ubo.proj[1][1] *= -1;
+    commandBuffer.updateBuffer(frameUbo.buffer(), 0, sizeof(ubo), &ubo);
+
+    // Begin rendering
     utils::transitionImage(commandBuffer,
                            m_vkContext.swapchainImage(imgRes.value),
                            vk::ImageLayout::eUndefined,
@@ -281,7 +320,7 @@ void Renderer::drawFrame()
         .sType = vk::StructureType::eRenderingInfo,
         .pNext = nullptr,
         .flags = {},
-        .renderArea = {vk::Offset2D {0, 0}, m_vkContext.swapchainExtent()},
+        .renderArea = {vk::Offset2D {0, 0}, swapchainExtent},
         .layerCount = 1,
         .viewMask = 0,
         .colorAttachmentCount = 1,
@@ -291,21 +330,20 @@ void Renderer::drawFrame()
     };
 
     commandBuffer.beginRendering(renderingInfo);
-
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *m_graphicsPipeline);
 
     // set dynamic viewport and scissor
     vk::Viewport viewport {.x = 0.f,
                            .y = 0.f,
-                           .width = static_cast<float>(m_vkContext.swapchainExtent().width),
-                           .height = static_cast<float>(m_vkContext.swapchainExtent().height),
+                           .width = static_cast<float>(swapchainExtent.width),
+                           .height = static_cast<float>(swapchainExtent.height),
                            .minDepth = 0.f,
                            .maxDepth = 1.f};
     commandBuffer.setViewport(0, viewport);
 
     vk::Rect2D scissor {
         .offset = {0, 0},
-        .extent = m_vkContext.swapchainExtent()
+        .extent = swapchainExtent
     };
     commandBuffer.setScissor(0, scissor);
 

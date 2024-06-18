@@ -28,8 +28,9 @@ public:
 
 private:
     void createGraphicsPipeline();
-    void initTransferData();
-    void initFrameData();
+    void initTransferCommandData();
+    void initFrameCommandData();
+    void initFrameUBOs();
     void uploadMesh();
 
 private:
@@ -37,9 +38,10 @@ private:
 
     VulkanGraphicsContext m_vkContext;
     vk::UniquePipeline m_graphicsPipeline;
-    TransferData m_transferData;
+    TransferCommandData m_transferCommandData;
     size_t m_frameCount = 0;
-    FrameData m_frameData[MAX_FRAMES_IN_FLIGHT];
+    FrameCommandData m_frameCommandData[MAX_FRAMES_IN_FLIGHT];
+    AllocatedBuffer m_frameUBOs[MAX_FRAMES_IN_FLIGHT];
     Mesh m_testMesh;
 };
 

@@ -5,6 +5,7 @@ target_sources(game PRIVATE
                renderer/VulkanGraphicsContext.cpp
                renderer/Types.cpp
                renderer/Utils.cpp
+               renderer/DescriptorSetLayoutBuilder.cpp
                renderer/GraphicsPipelineBuilder.cpp
                renderer/Renderer.cpp
                #
@@ -17,6 +18,7 @@ target_compile_definitions(game PRIVATE
                            VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1
                            VMA_STATIC_VULKAN_FUNCTIONS=0
                            VMA_DYNAMIC_VULKAN_FUNCTIONS=1
+                           GLM_FORCE_RADIANS
                            GLM_FORCE_DEPTH_ZERO_TO_ONE
                            # Below are my preferences. Since I'm not using, might as well remove to compile faster
                            VULKAN_HPP_NO_CONSTRUCTORS

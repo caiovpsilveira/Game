@@ -24,6 +24,11 @@ void GraphicsPipelineBuilder::setShaders(const std::filesystem::path& vertexShad
     m_fragShaderModule = utils::createUniqueShaderModule(m_device, fragShaderCode);
 }
 
+void GraphicsPipelineBuilder::addDescriptorSetLayout(vk::UniqueDescriptorSetLayout&& descriptorSetLayout)
+{
+    m_descriptorSetLayouts.emplace_back(std::move(descriptorSetLayout));
+}
+
 vk::UniquePipeline GraphicsPipelineBuilder::build(vk::Format swapchainColorFormat)
 {
     // Shaders
@@ -146,15 +151,23 @@ vk::UniquePipeline GraphicsPipelineBuilder::build(vk::Format swapchainColorForma
                                                          .stencilAttachmentFormat = vk::Format::eUndefined};
 
     // Pipeline Layout
+    std::vector<vk::DescriptorSetLayout> descriptorSetLayouts;
+    descriptorSetLayouts.reserve(m_descriptorSetLayouts.size());
+    std::transform(m_descriptorSetLayouts.begin(),
+                   m_descriptorSetLayouts.end(),
+                   std::back_inserter(descriptorSetLayouts),
+                   [](const vk::UniqueDescriptorSetLayout& l) { return l.get(); });
+
     vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo {.sType = vk::StructureType::ePipelineLayoutCreateInfo,
                                                            .pNext = nullptr,
                                                            .flags = {},
-                                                           .setLayoutCount = 0,
-                                                           .pSetLayouts = nullptr,
+                                                           .setLayoutCount =
+                                                               static_cast<uint32_t>(descriptorSetLayouts.size()),
+                                                           .pSetLayouts = descriptorSetLayouts.data(),
                                                            .pushConstantRangeCount = 0,
                                                            .pPushConstantRanges = nullptr};
 
-    vk::UniquePipelineLayout pipelineLayout = m_device.createPipelineLayoutUnique(pipelineLayoutCreateInfo);
+    vk::UniquePipelineLayout uniquePipelineLayout = m_device.createPipelineLayoutUnique(pipelineLayoutCreateInfo);
 
     // Graphics pipeline
     vk::GraphicsPipelineCreateInfo pipelineCreateInfo {.sType = vk::StructureType::eGraphicsPipelineCreateInfo,
@@ -171,7 +184,7 @@ vk::UniquePipeline GraphicsPipelineBuilder::build(vk::Format swapchainColorForma
                                                        .pDepthStencilState = nullptr,
                                                        .pColorBlendState = &colorBlendStateCreateInfo,
                                                        .pDynamicState = &dynamicStateCreateInfo,
-                                                       .layout = *pipelineLayout,
+                                                       .layout = *uniquePipelineLayout,
                                                        .renderPass = nullptr,
                                                        .subpass = 0,
                                                        .basePipelineHandle = nullptr,

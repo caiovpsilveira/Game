@@ -28,12 +28,16 @@ public:
     void setShaders(const std::filesystem::path& vertexShaderSourcePath,
                     const std::filesystem::path& fragmentShaderSourcePath);
 
-    vk::UniquePipeline build(vk::Format swapchainColorFormat);
+    void addDescriptorSetLayout(vk::UniqueDescriptorSetLayout&& descriptorSetLayout);
+
+    vk::UniquePipeline build(vk::Format swapchainColorFormat);   // FIXME remove this param. Pass VulkanGraphicsContext
+                                                                 // reference instead in ctor?
 
 private:
     vk::Device m_device;   // not owned
     vk::UniqueShaderModule m_vertShaderModule;
     vk::UniqueShaderModule m_fragShaderModule;
+    std::vector<vk::UniqueDescriptorSetLayout> m_descriptorSetLayouts;
 };
 
 }   // namespace renderer
