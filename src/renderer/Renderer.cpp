@@ -51,19 +51,10 @@ Renderer::Renderer(SDL_Window* window)
     createInfo.requiredDevice13Features = &features13;
     m_vkContext = VulkanGraphicsContext(createInfo);
 
-    createGraphicsPipeline();
     initTransferData();
-    initFrameData();
+    initFrameCommandData();
+    createGraphicsPipeline();
     uploadMesh();
-}
-
-void Renderer::createGraphicsPipeline()
-{
-    GraphicsPipelineBuilder builder(m_vkContext.device());
-
-    builder.setShaders("../shaders/simple_shader.vert.spv", "../shaders/simple_shader.frag.spv");
-    m_graphicsPipeline = builder.build(m_vkContext.swapchainColorFormat());
-    DEBUG("Successfully created graphics pipeline\n");
 }
 
 void Renderer::initTransferData()
@@ -93,7 +84,7 @@ void Renderer::initTransferData()
     DEBUG("Successfully created transfer data\n");
 }
 
-void Renderer::initFrameData()
+void Renderer::initFrameCommandData()
 {
     vk::CommandPoolCreateInfo commandPoolCreateInfo {.sType = vk::StructureType::eCommandPoolCreateInfo,
                                                      .pNext = nullptr,
@@ -114,17 +105,27 @@ void Renderer::initFrameData()
                                          .pNext = nullptr,
                                          .flags = vk::FenceCreateFlagBits::eSignaled};
 
-    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-        m_frameData[i].commandPool = m_vkContext.device().createCommandPoolUnique(commandPoolCreateInfo);
-        commandBufferAllocateInfo.commandPool = *m_frameData[i].commandPool;
-        m_frameData[i].commandBuffer =
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        auto& commandData = m_frameData[i].commandData;
+        commandData.commandPool = m_vkContext.device().createCommandPoolUnique(commandPoolCreateInfo);
+        commandBufferAllocateInfo.commandPool = *commandData.commandPool;
+        commandData.commandBuffer =
             std::move(m_vkContext.device().allocateCommandBuffersUnique(commandBufferAllocateInfo)[0]);
 
-        m_frameData[i].swapchainSemaphore = m_vkContext.device().createSemaphoreUnique(semaphoreCreateInfo);
-        m_frameData[i].renderSemaphore = m_vkContext.device().createSemaphoreUnique(semaphoreCreateInfo);
-        m_frameData[i].renderFence = m_vkContext.device().createFenceUnique(fenceCreateInfo);
+        commandData.swapchainSemaphore = m_vkContext.device().createSemaphoreUnique(semaphoreCreateInfo);
+        commandData.renderSemaphore = m_vkContext.device().createSemaphoreUnique(semaphoreCreateInfo);
+        commandData.renderFence = m_vkContext.device().createFenceUnique(fenceCreateInfo);
     }
-    DEBUG("Successfully created frame data\n");
+    DEBUG("Successfully created frame command data\n");
+}
+
+void Renderer::createGraphicsPipeline()
+{
+    GraphicsPipelineBuilder builder(m_vkContext.device());
+
+    builder.setShaders("../shaders/simple_shader.vert.spv", "../shaders/simple_shader.frag.spv");
+    m_graphicsPipeline = builder.build(m_vkContext.swapchainColorFormat());
+    DEBUG("Successfully created graphics pipeline\n");
 }
 
 void Renderer::uploadMesh()
@@ -202,14 +203,17 @@ void Renderer::drawFrame()
     const auto& device = m_vkContext.device();
     const auto& swapchain = m_vkContext.swapchain();
     const auto& frameData = m_frameData[m_frameCount % MAX_FRAMES_IN_FLIGHT];
-    const auto& commandBuffer = *frameData.commandBuffer;
+
+    const auto& frameCommandData = frameData.commandData;
+    const auto& commandBuffer = *frameCommandData.commandBuffer;
 
     [[maybe_unused]] auto fenceRes =
-        device.waitForFences(*frameData.renderFence, vk::True, std::numeric_limits<uint64_t>::max());
-    device.resetFences(*frameData.renderFence);
+        device.waitForFences(*frameCommandData.renderFence, vk::True, std::numeric_limits<uint64_t>::max());
+    device.resetFences(*frameCommandData.renderFence);
 
-    auto imgRes =
-        device.acquireNextImageKHR(swapchain, std::numeric_limits<uint64_t>::max(), *frameData.swapchainSemaphore);
+    auto imgRes = device.acquireNextImageKHR(swapchain,
+                                             std::numeric_limits<uint64_t>::max(),
+                                             *frameCommandData.swapchainSemaphore);
 
     if (imgRes.result == vk::Result::eErrorOutOfDateKHR) {
         m_vkContext.recreateSwapchain();
@@ -296,14 +300,14 @@ void Renderer::drawFrame()
 
     vk::SemaphoreSubmitInfo waitInfo {.sType = vk::StructureType::eSemaphoreSubmitInfo,
                                       .pNext = nullptr,
-                                      .semaphore = *frameData.swapchainSemaphore,
+                                      .semaphore = *frameCommandData.swapchainSemaphore,
                                       .value = 1,
                                       .stageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
                                       .deviceIndex = 0};
 
     vk::SemaphoreSubmitInfo signalInfo {.sType = vk::StructureType::eSemaphoreSubmitInfo,
                                         .pNext = nullptr,
-                                        .semaphore = *frameData.renderSemaphore,
+                                        .semaphore = *frameCommandData.renderSemaphore,
                                         .value = 1,
                                         .stageMask = vk::PipelineStageFlagBits2::eAllGraphics,
                                         .deviceIndex = 0};
@@ -318,13 +322,13 @@ void Renderer::drawFrame()
                                  .signalSemaphoreInfoCount = 1,
                                  .pSignalSemaphoreInfos = &signalInfo};
 
-    m_vkContext.graphicsQueue().submit2(submitInfo2, *frameData.renderFence);
+    m_vkContext.graphicsQueue().submit2(submitInfo2, *frameCommandData.renderFence);
 
     // Present
     vk::PresentInfoKHR presentInfo {.sType = vk::StructureType::ePresentInfoKHR,
                                     .pNext = nullptr,
                                     .waitSemaphoreCount = 1,
-                                    .pWaitSemaphores = &*frameData.renderSemaphore,
+                                    .pWaitSemaphores = &*frameCommandData.renderSemaphore,
                                     .swapchainCount = 1,
                                     .pSwapchains = &swapchain,
                                     .pImageIndices = &imgRes.value,

@@ -13,20 +13,6 @@
 namespace renderer
 {
 
-struct TransferData {
-    vk::UniqueCommandPool commandPool;
-    vk::UniqueCommandBuffer commandBuffer;
-    vk::UniqueFence fence;
-};
-
-struct FrameData {
-    vk::UniqueCommandPool commandPool;
-    vk::UniqueCommandBuffer commandBuffer;
-    vk::UniqueSemaphore swapchainSemaphore;
-    vk::UniqueSemaphore renderSemaphore;
-    vk::UniqueFence renderFence;
-};
-
 struct Vertex {
     glm::vec2 pos;
     glm::vec3 color;
@@ -89,6 +75,24 @@ private:
     vk::DeviceAddress m_vertexBufferAddress;
     AllocatedBuffer m_indexBuffer;
     uint32_t m_numIndices;
+};
+
+struct TransferData {
+    vk::UniqueCommandPool commandPool;
+    vk::UniqueCommandBuffer commandBuffer;
+    vk::UniqueFence fence;
+};
+
+struct FrameCommandData {
+    vk::UniqueCommandPool commandPool;
+    vk::UniqueCommandBuffer commandBuffer;
+    vk::UniqueSemaphore swapchainSemaphore;
+    vk::UniqueSemaphore renderSemaphore;
+    vk::UniqueFence renderFence;
+};
+
+struct FrameData {
+    FrameCommandData commandData;
 };
 
 }   // namespace renderer
