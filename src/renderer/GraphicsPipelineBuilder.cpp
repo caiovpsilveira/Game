@@ -2,6 +2,7 @@
 
 #include "Types.hpp"
 #include "Utils.hpp"
+#include "VulkanGraphicsContext.hpp"
 #include "core/Logger.hpp"
 
 // libs
@@ -10,8 +11,8 @@
 namespace renderer
 {
 
-GraphicsPipelineBuilder::GraphicsPipelineBuilder(vk::Device device) noexcept
-    : m_device(device)
+GraphicsPipelineBuilder::GraphicsPipelineBuilder(const VulkanGraphicsContext& context) noexcept
+    : m_context(context)
 {}
 
 void GraphicsPipelineBuilder::setShaders(const std::filesystem::path& vertexShaderSourcePath,
@@ -20,8 +21,9 @@ void GraphicsPipelineBuilder::setShaders(const std::filesystem::path& vertexShad
     auto vertShaderCode = utils::readFile(vertexShaderSourcePath);
     auto fragShaderCode = utils::readFile(fragmentShaderSourcePath);
 
-    m_vertShaderModule = utils::createUniqueShaderModule(m_device, vertShaderCode);
-    m_fragShaderModule = utils::createUniqueShaderModule(m_device, fragShaderCode);
+    const auto& device = m_context.device();
+    m_vertShaderModule = utils::createUniqueShaderModule(device, vertShaderCode);
+    m_fragShaderModule = utils::createUniqueShaderModule(device, fragShaderCode);
 }
 
 void GraphicsPipelineBuilder::setPipelineLayout(vk::PipelineLayout layout) noexcept
@@ -29,7 +31,7 @@ void GraphicsPipelineBuilder::setPipelineLayout(vk::PipelineLayout layout) noexc
     m_pipelineLayout = layout;
 }
 
-vk::UniquePipeline GraphicsPipelineBuilder::build(vk::Format swapchainColorFormat)
+vk::UniquePipeline GraphicsPipelineBuilder::build()
 {
     // Shaders
     vk::PipelineShaderStageCreateInfo vertShaderStageInfo {.sType = vk::StructureType::ePipelineShaderStageCreateInfo,
@@ -142,11 +144,12 @@ vk::UniquePipeline GraphicsPipelineBuilder::build(vk::Format swapchainColorForma
         .blendConstants = {{0.f, 0.f, 0.f, 0.f}}};
 
     // Rendering Create Info (dynamic rendering, Vulkan 1.3+)
+    vk::Format colorFormat = m_context.swapchainColorFormat();
     vk::PipelineRenderingCreateInfo renderingCreateInfo {.sType = vk::StructureType::ePipelineRenderingCreateInfo,
                                                          .pNext = nullptr,
                                                          .viewMask = 0,
                                                          .colorAttachmentCount = 1,
-                                                         .pColorAttachmentFormats = &swapchainColorFormat,
+                                                         .pColorAttachmentFormats = &colorFormat,
                                                          .depthAttachmentFormat = vk::Format::eUndefined,
                                                          .stencilAttachmentFormat = vk::Format::eUndefined};
 
@@ -171,7 +174,7 @@ vk::UniquePipeline GraphicsPipelineBuilder::build(vk::Format swapchainColorForma
                                                        .basePipelineHandle = nullptr,
                                                        .basePipelineIndex = -1};
 
-    auto res = m_device.createGraphicsPipelineUnique(nullptr, pipelineCreateInfo);
+    auto res = m_context.device().createGraphicsPipelineUnique(nullptr, pipelineCreateInfo);
 
     if (res.result == vk::Result::eSuccess) {
         return std::move(res.value);

@@ -9,12 +9,13 @@
 
 namespace renderer
 {
+class VulkanGraphicsContext;
 
 class GraphicsPipelineBuilder
 {
 public:
     GraphicsPipelineBuilder() = delete;
-    explicit GraphicsPipelineBuilder(vk::Device device) noexcept;
+    explicit GraphicsPipelineBuilder(const VulkanGraphicsContext& context) noexcept;
 
     GraphicsPipelineBuilder(const GraphicsPipelineBuilder&) = delete;
     GraphicsPipelineBuilder& operator=(const GraphicsPipelineBuilder&) = delete;
@@ -30,10 +31,11 @@ public:
 
     void setPipelineLayout(vk::PipelineLayout layout) noexcept;
 
-    vk::UniquePipeline build(vk::Format swapchainColorFormat);
+    // TODO: add more supported color formats to the pipeline instead of only using the current swapchain format
+    vk::UniquePipeline build();
 
 private:
-    vk::Device m_device;   // not owned
+    const VulkanGraphicsContext& m_context;
     vk::UniqueShaderModule m_vertShaderModule;
     vk::UniqueShaderModule m_fragShaderModule;
     vk::PipelineLayout m_pipelineLayout;   // not owned

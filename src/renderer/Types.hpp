@@ -61,7 +61,7 @@ public:
     Mesh& operator=(const Mesh&) = delete;
 
     Mesh(Mesh&&) noexcept = default;
-    Mesh& operator=(Mesh&&) = default;
+    Mesh& operator=(Mesh&&) noexcept = default;
 
     ~Mesh() noexcept = default;
 

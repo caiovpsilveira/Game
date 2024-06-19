@@ -183,10 +183,10 @@ void Renderer::createGraphicsPipeline(vk::UniqueDescriptorSetLayout&& uboSetLayo
     pipelineLayoutBuilder.addDescriptorSetLayout(std::move(uboSetLayout));
     m_graphicsPipelineLayout = pipelineLayoutBuilder.build();
 
-    GraphicsPipelineBuilder pipelineBuilder(device);
+    GraphicsPipelineBuilder pipelineBuilder(m_vkContext);
     pipelineBuilder.setShaders("../shaders/simple_shader.vert.spv", "../shaders/simple_shader.frag.spv");
     pipelineBuilder.setPipelineLayout(*m_graphicsPipelineLayout);
-    m_graphicsPipeline = pipelineBuilder.build(m_vkContext.swapchainColorFormat());
+    m_graphicsPipeline = pipelineBuilder.build();
     DEBUG("Successfully created graphics pipeline\n");
 }
 
