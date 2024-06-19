@@ -14,9 +14,6 @@ struct SDL_Window;
 namespace renderer
 {
 
-using PFN_presentModeKHRselector = vk::PresentModeKHR (*)(std::span<const vk::PresentModeKHR>);
-using PFN_surfaceFormatKHRselector = vk::SurfaceFormatKHR (*)(std::span<const vk::SurfaceFormatKHR>);
-
 struct VulkanGraphicsContextCreateInfo {
     VulkanGraphicsContextCreateInfo() noexcept;
 
@@ -33,9 +30,6 @@ struct VulkanGraphicsContextCreateInfo {
     vk::PhysicalDeviceVulkan11Features* requiredDevice11Features;
     vk::PhysicalDeviceVulkan12Features* requiredDevice12Features;
     vk::PhysicalDeviceVulkan13Features* requiredDevice13Features;
-
-    PFN_presentModeKHRselector pfnPresentModeKHRselector;
-    PFN_surfaceFormatKHRselector pfnSurfaceFormatKHRselector;
 };
 
 class VulkanGraphicsContext
@@ -115,8 +109,7 @@ private:
 
     void createAllocator(uint32_t vulkanApiVersion, bool useBufferDeviceAddressFeature);
 
-    void createSwapchain(PFN_presentModeKHRselector pfnPresentModeKHRselector,
-                         PFN_surfaceFormatKHRselector pfnSurfaceFormatKHRselector);
+    void createSwapchain();
 
 private:
     SDL_Window* m_window;   // not owned

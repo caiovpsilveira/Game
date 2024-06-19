@@ -80,8 +80,6 @@ VulkanGraphicsContextCreateInfo::VulkanGraphicsContextCreateInfo() noexcept
     , requiredDevice11Features(nullptr)
     , requiredDevice12Features(nullptr)
     , requiredDevice13Features(nullptr)
-    , pfnPresentModeKHRselector(nullptr)
-    , pfnSurfaceFormatKHRselector(nullptr)
 {}
 
 VulkanGraphicsContext::VulkanGraphicsContext(const VulkanGraphicsContextCreateInfo& createInfo)
@@ -147,7 +145,7 @@ VulkanGraphicsContext::VulkanGraphicsContext(const VulkanGraphicsContextCreateIn
     createAllocator(createInfo.vulkanApiVersion,
                     createInfo.requiredDevice12Features && createInfo.requiredDevice12Features->bufferDeviceAddress);
 
-    createSwapchain(createInfo.pfnPresentModeKHRselector, createInfo.pfnSurfaceFormatKHRselector);
+    createSwapchain();
 
     assert(m_instance);
     // assert(m_debugMessenger); // Allowed, can be nullptr if debug is disabled / not supported
@@ -428,26 +426,18 @@ void VulkanGraphicsContext::createAllocator(uint32_t vulkanApiVersion, bool useB
     DEBUG("Successfully created vmaAllocator\n");
 }
 
-void VulkanGraphicsContext::createSwapchain(PFN_presentModeKHRselector pfnPresentModeKHRselector,
-                                            PFN_surfaceFormatKHRselector pfnSurfaceFormatKHRselector)
+void VulkanGraphicsContext::createSwapchain()
 {
     // The Vulkan specs requires VK_KHR_surface extension to support at least VK_PRESENT_MODE_FIFO_KHR present mode
     // (ref VkPresentModeKHR(3) Manual Page)
     // and requires at least one VkSurfaceFormatKHR to be supported, with format != undefined
     // (ref vkGetPhysicalDeviceSurfaceFormatsKHR(3) Manual Page).
 
-    // Select the default values for the present mode and SurfaceFormatKHR
-    if (pfnPresentModeKHRselector != nullptr) {
-        auto presentModes = m_physicalDevice.getSurfacePresentModesKHR(*m_surface);
-        m_currentSwapchainPresentMode = pfnPresentModeKHRselector(presentModes);
-    } else {
-        m_currentSwapchainPresentMode = vk::PresentModeKHR::eFifo;
-    }
+    m_currentSwapchainPresentMode = vk::PresentModeKHR::eFifo;
 
     auto surfaceFormats = m_physicalDevice.getSurfaceFormatsKHR(*m_surface);
     assert(surfaceFormats.size() > 0);
-    m_currentSwapchainSurfaceFormat =
-        pfnSurfaceFormatKHRselector ? pfnSurfaceFormatKHRselector(surfaceFormats) : surfaceFormats[0];
+    m_currentSwapchainSurfaceFormat = surfaceFormats[0];
 
     DEBUG_FMT("Using swapchain present mode = {}, swapchain surface format = {{{}, {}}}\n",
               vk::to_string(m_currentSwapchainPresentMode),
