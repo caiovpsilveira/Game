@@ -33,7 +33,7 @@ private:
     vk::UniqueDescriptorSetLayout createUbosDescriptorSets();
 
     void createGraphicsPipeline(vk::UniqueDescriptorSetLayout&& uboSetLayout);
-    void initTransferData();
+    void initTransferCommandData();
     void uploadMesh();
 
     void updateUbo(const AllocatedBuffer& ubo, const vk::Extent2D& swapchainExtent);
@@ -47,7 +47,7 @@ private:
 
     vk::UniquePipelineLayout m_graphicsPipelineLayout;
     vk::UniquePipeline m_graphicsPipeline;
-    TransferData m_transferData;
+    TransferCommandData m_transferCommandData;
 
     size_t m_frameCount = 0;
     FrameData m_frameData[MAX_FRAMES_IN_FLIGHT];

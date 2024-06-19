@@ -60,7 +60,7 @@ Renderer::Renderer(SDL_Window* window)
     allocateFrameUboBuffers();
     vk::UniqueDescriptorSetLayout uboSetLayout = createUbosDescriptorSets();
     createGraphicsPipeline(std::move(uboSetLayout));
-    initTransferData();
+    initTransferCommandData();
     uploadMesh();
 }
 
@@ -190,7 +190,7 @@ void Renderer::createGraphicsPipeline(vk::UniqueDescriptorSetLayout&& uboSetLayo
     DEBUG("Successfully created graphics pipeline\n");
 }
 
-void Renderer::initTransferData()
+void Renderer::initTransferCommandData()
 {
     const auto& device = m_vkContext.device();
 
@@ -199,30 +199,30 @@ void Renderer::initTransferData()
                                                      .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
                                                      .queueFamilyIndex = m_vkContext.transferQueueFamilyIndex()};
 
-    m_transferData.commandPool = device.createCommandPoolUnique(commandPoolCreateInfo);
+    m_transferCommandData.commandPool = device.createCommandPoolUnique(commandPoolCreateInfo);
 
     vk::CommandBufferAllocateInfo commandBufferAllocateInfo {.sType = vk::StructureType::eCommandBufferAllocateInfo,
                                                              .pNext = nullptr,
-                                                             .commandPool = *m_transferData.commandPool,
+                                                             .commandPool = *m_transferCommandData.commandPool,
                                                              .level = vk::CommandBufferLevel::ePrimary,
                                                              .commandBufferCount = 1};
 
-    m_transferData.commandBuffer = std::move(device.allocateCommandBuffersUnique(commandBufferAllocateInfo)[0]);
+    m_transferCommandData.commandBuffer = std::move(device.allocateCommandBuffersUnique(commandBufferAllocateInfo)[0]);
 
     vk::FenceCreateInfo fenceCreateInfo {.sType = vk::StructureType::eFenceCreateInfo,
                                          .pNext = nullptr,
                                          .flags = vk::FenceCreateFlagBits::eSignaled};
 
-    m_transferData.fence = device.createFenceUnique(fenceCreateInfo);
-    DEBUG("Successfully created transfer data\n");
+    m_transferCommandData.fence = device.createFenceUnique(fenceCreateInfo);
+    DEBUG("Successfully created transfer command data\n");
 }
 
 void Renderer::uploadMesh()
 {
     const auto& device = m_vkContext.device();
     const auto& allocator = m_vkContext.allocator();
-    const auto& commandBuffer = *m_transferData.commandBuffer;
-    const auto& fence = *m_transferData.fence;
+    const auto& commandBuffer = *m_transferCommandData.commandBuffer;
+    const auto& fence = *m_transferCommandData.fence;
 
     const vk::DeviceSize vertexBufferSize = vertices.size() * sizeof(vertices[0]);
     const vk::DeviceSize indexBufferSize = indices.size() * sizeof(indices[0]);

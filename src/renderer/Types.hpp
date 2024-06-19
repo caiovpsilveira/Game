@@ -77,7 +77,7 @@ private:
     uint32_t m_numIndices;
 };
 
-struct TransferData {
+struct TransferCommandData {
     vk::UniqueCommandPool commandPool;
     vk::UniqueCommandBuffer commandBuffer;
     vk::UniqueFence fence;
