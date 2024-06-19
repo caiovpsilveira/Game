@@ -29,8 +29,8 @@ void Game::run()
                 quit = true;
                 break;
             }
-            m_renderer.drawFrame();
         }
+        m_renderer.drawFrame();
     }
 }
 
