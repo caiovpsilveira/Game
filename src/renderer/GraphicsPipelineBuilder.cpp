@@ -100,7 +100,7 @@ vk::UniquePipeline GraphicsPipelineBuilder::build(vk::Format swapchainColorForma
         .rasterizerDiscardEnable = vk::False,
         .polygonMode = vk::PolygonMode::eFill,
         .cullMode = vk::CullModeFlagBits::eBack,
-        .frontFace = vk::FrontFace::eClockwise,
+        .frontFace = vk::FrontFace::eCounterClockwise,
         .depthBiasEnable = vk::False,
         .depthBiasConstantFactor = 0.f,
         .depthBiasClamp = 0.f,

@@ -100,6 +100,7 @@ struct FrameCommandData {
 struct FrameData {
     FrameCommandData commandData;
     AllocatedBuffer ubo;
+    vk::UniqueDescriptorSet uboDescriptorSet;
 };
 
 }   // namespace renderer

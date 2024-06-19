@@ -27,10 +27,13 @@ public:
     void drawFrame();
 
 private:
-    void initTransferData();
-    void initFrameData();
     void initFrameCommandData();
-    void createDescriptorsAndGraphicsPipeline();
+    void createUboDescriptorPool();
+    void allocateFrameUboBuffers();
+    vk::UniqueDescriptorSetLayout createUbosDescriptorSets();
+
+    void createGraphicsPipeline(vk::UniqueDescriptorSetLayout&& uboSetLayout);
+    void initTransferData();
     void uploadMesh();
 
     void updateUbo(const AllocatedBuffer& ubo, const vk::Extent2D& swapchainExtent);
@@ -39,6 +42,8 @@ private:
     static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
     VulkanGraphicsContext m_vkContext;
+
+    vk::UniqueDescriptorPool m_uboDescriptorPool;
 
     vk::UniquePipelineLayout m_graphicsPipelineLayout;
     vk::UniquePipeline m_graphicsPipeline;

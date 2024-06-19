@@ -55,53 +55,13 @@ Renderer::Renderer(SDL_Window* window)
     createInfo.requiredDevice13Features = &features13;
     m_vkContext = VulkanGraphicsContext(createInfo);
 
-    initTransferData();
-    initFrameData();
-    createDescriptorsAndGraphicsPipeline();
-    uploadMesh();
-}
-
-void Renderer::initTransferData()
-{
-    const auto& device = m_vkContext.device();
-
-    vk::CommandPoolCreateInfo commandPoolCreateInfo {.sType = vk::StructureType::eCommandPoolCreateInfo,
-                                                     .pNext = nullptr,
-                                                     .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
-                                                     .queueFamilyIndex = m_vkContext.transferQueueFamilyIndex()};
-
-    m_transferData.commandPool = device.createCommandPoolUnique(commandPoolCreateInfo);
-
-    vk::CommandBufferAllocateInfo commandBufferAllocateInfo {.sType = vk::StructureType::eCommandBufferAllocateInfo,
-                                                             .pNext = nullptr,
-                                                             .commandPool = *m_transferData.commandPool,
-                                                             .level = vk::CommandBufferLevel::ePrimary,
-                                                             .commandBufferCount = 1};
-
-    m_transferData.commandBuffer = std::move(device.allocateCommandBuffersUnique(commandBufferAllocateInfo)[0]);
-
-    vk::FenceCreateInfo fenceCreateInfo {.sType = vk::StructureType::eFenceCreateInfo,
-                                         .pNext = nullptr,
-                                         .flags = vk::FenceCreateFlagBits::eSignaled};
-
-    m_transferData.fence = device.createFenceUnique(fenceCreateInfo);
-    DEBUG("Successfully created transfer data\n");
-}
-
-void Renderer::initFrameData()
-{
     initFrameCommandData();
-
-    // TODO: use vkCmdUpdateBuffer instead of mapped memory to update the UBO
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-        m_frameData[i].ubo =
-            AllocatedBuffer(m_vkContext.allocator(),
-                            sizeof(UniformBufferObject),
-                            vk::BufferUsageFlagBits::eUniformBuffer,
-                            VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
-                            VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE);
-    }
-    DEBUG("Successfully created frame UBOs\n");
+    createUboDescriptorPool();
+    allocateFrameUboBuffers();
+    vk::UniqueDescriptorSetLayout uboSetLayout = createUbosDescriptorSets();
+    createGraphicsPipeline(std::move(uboSetLayout));
+    initTransferData();
+    uploadMesh();
 }
 
 void Renderer::initFrameCommandData()
@@ -139,13 +99,86 @@ void Renderer::initFrameCommandData()
     DEBUG("Successfully created frame command data\n");
 }
 
-void Renderer::createDescriptorsAndGraphicsPipeline()
+void Renderer::createUboDescriptorPool()
+{
+    vk::DescriptorPoolSize poolSize {.type = vk::DescriptorType::eUniformBuffer,
+                                     .descriptorCount = MAX_FRAMES_IN_FLIGHT};
+
+    vk::DescriptorPoolCreateInfo poolCreateInfo {.sType = vk::StructureType::eDescriptorPoolCreateInfo,
+                                                 .pNext = nullptr,
+                                                 .flags = {},
+                                                 .maxSets = MAX_FRAMES_IN_FLIGHT,
+                                                 .poolSizeCount = 1,
+                                                 .pPoolSizes = &poolSize};
+
+    m_uboDescriptorPool = m_vkContext.device().createDescriptorPoolUnique(poolCreateInfo);
+    DEBUG("Successfully created UBO descriptor pool\n");
+}
+
+void Renderer::allocateFrameUboBuffers()
+{
+    // TODO: use vkCmdUpdateBuffer instead of mapped memory to update the UBO
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        m_frameData[i].ubo =
+            AllocatedBuffer(m_vkContext.allocator(),
+                            sizeof(UniformBufferObject),
+                            vk::BufferUsageFlagBits::eUniformBuffer,
+                            VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+                            VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE);
+    }
+    DEBUG("Successfully allocated frame UBOs buffers\n");
+}
+
+vk::UniqueDescriptorSetLayout Renderer::createUbosDescriptorSets()
 {
     const auto& device = m_vkContext.device();
     DescriptorSetLayoutBuilder descriptorSetLayoutBuilder(device);
     descriptorSetLayoutBuilder.addBinding(vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex);
     vk::UniqueDescriptorSetLayout uboSetLayout = descriptorSetLayoutBuilder.build();
 
+    vk::DescriptorSetLayout descriptorSetLayouts[MAX_FRAMES_IN_FLIGHT];
+    std::ranges::fill(descriptorSetLayouts, *uboSetLayout);
+
+    vk::DescriptorSetAllocateInfo allocateInfo {.sType = vk::StructureType::eDescriptorSetAllocateInfo,
+                                                .pNext = nullptr,
+                                                .descriptorPool = *m_uboDescriptorPool,
+                                                .descriptorSetCount = std::size(descriptorSetLayouts),
+                                                .pSetLayouts = descriptorSetLayouts};
+
+    // Allocate descriptor sets
+    {
+        auto descriptorSetsUniqueVec = device.allocateDescriptorSetsUnique(allocateInfo);
+        assert(descriptorSetsUniqueVec.size() == MAX_FRAMES_IN_FLIGHT);
+        for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+            m_frameData[i].uboDescriptorSet = std::move(descriptorSetsUniqueVec[i]);
+        }
+    }
+
+    // Update descriptor sets
+    vk::DescriptorBufferInfo bufferInfo {.buffer = nullptr, .offset = 0, .range = sizeof(UniformBufferObject)};
+    vk::WriteDescriptorSet descriptorWrite {.sType = vk::StructureType::eWriteDescriptorSet,
+                                            .pNext = nullptr,
+                                            .dstSet = nullptr,
+                                            .dstBinding = 0,
+                                            .dstArrayElement = 0,
+                                            .descriptorCount = 1,
+                                            .descriptorType = vk::DescriptorType::eUniformBuffer,
+                                            .pImageInfo = nullptr,
+                                            .pBufferInfo = &bufferInfo,
+                                            .pTexelBufferView = nullptr};
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        auto& frameData = m_frameData[i];
+        bufferInfo.buffer = frameData.ubo.buffer();
+        descriptorWrite.dstSet = *frameData.uboDescriptorSet;
+        device.updateDescriptorSets(descriptorWrite, nullptr);
+    }
+    DEBUG("Successfully created UBO descriptor sets\n");
+    return uboSetLayout;
+}
+
+void Renderer::createGraphicsPipeline(vk::UniqueDescriptorSetLayout&& uboSetLayout)
+{
+    const auto& device = m_vkContext.device();
     PipelineLayoutBuilder pipelineLayoutBuilder(device);
     pipelineLayoutBuilder.addDescriptorSetLayout(std::move(uboSetLayout));
     m_graphicsPipelineLayout = pipelineLayoutBuilder.build();
@@ -155,6 +188,33 @@ void Renderer::createDescriptorsAndGraphicsPipeline()
     pipelineBuilder.setPipelineLayout(*m_graphicsPipelineLayout);
     m_graphicsPipeline = pipelineBuilder.build(m_vkContext.swapchainColorFormat());
     DEBUG("Successfully created graphics pipeline\n");
+}
+
+void Renderer::initTransferData()
+{
+    const auto& device = m_vkContext.device();
+
+    vk::CommandPoolCreateInfo commandPoolCreateInfo {.sType = vk::StructureType::eCommandPoolCreateInfo,
+                                                     .pNext = nullptr,
+                                                     .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+                                                     .queueFamilyIndex = m_vkContext.transferQueueFamilyIndex()};
+
+    m_transferData.commandPool = device.createCommandPoolUnique(commandPoolCreateInfo);
+
+    vk::CommandBufferAllocateInfo commandBufferAllocateInfo {.sType = vk::StructureType::eCommandBufferAllocateInfo,
+                                                             .pNext = nullptr,
+                                                             .commandPool = *m_transferData.commandPool,
+                                                             .level = vk::CommandBufferLevel::ePrimary,
+                                                             .commandBufferCount = 1};
+
+    m_transferData.commandBuffer = std::move(device.allocateCommandBuffersUnique(commandBufferAllocateInfo)[0]);
+
+    vk::FenceCreateInfo fenceCreateInfo {.sType = vk::StructureType::eFenceCreateInfo,
+                                         .pNext = nullptr,
+                                         .flags = vk::FenceCreateFlagBits::eSignaled};
+
+    m_transferData.fence = device.createFenceUnique(fenceCreateInfo);
+    DEBUG("Successfully created transfer data\n");
 }
 
 void Renderer::uploadMesh()
@@ -330,6 +390,11 @@ void Renderer::drawFrame()
     // draw
     commandBuffer.bindVertexBuffers(0, m_testMesh.vertexBuffer(), {0});
     commandBuffer.bindIndexBuffer(m_testMesh.indexBuffer(), 0, vk::IndexType::eUint32);
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+                                     *m_graphicsPipelineLayout,
+                                     0,
+                                     *frameData.uboDescriptorSet,
+                                     nullptr);
     commandBuffer.drawIndexed(m_testMesh.numIndices(), 1, 0, 0, 0);
 
     commandBuffer.endRendering();
