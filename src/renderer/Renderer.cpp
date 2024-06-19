@@ -352,7 +352,7 @@ void Renderer::drawFrame()
                                                  .resolveMode = {},
                                                  .resolveImageView = {},
                                                  .resolveImageLayout = {},
-                                                 .loadOp = vk::AttachmentLoadOp::eLoad,
+                                                 .loadOp = vk::AttachmentLoadOp::eClear,
                                                  .storeOp = vk::AttachmentStoreOp::eStore,
                                                  .clearValue = {}};
 
