@@ -27,4 +27,4 @@ target_compile_definitions(game PRIVATE
                            VULKAN_HPP_NO_SETTERS)
 
 target_include_directories(game PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(game PUBLIC glm SDL2)
+target_link_libraries(game PUBLIC glm SDL2 STB_IMAGE)
