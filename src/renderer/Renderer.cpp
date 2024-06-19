@@ -147,10 +147,11 @@ vk::UniqueDescriptorSetLayout Renderer::createUbosDescriptorSets()
 
     // Allocate descriptor sets
     {
-        auto descriptorSetsUniqueVec = device.allocateDescriptorSetsUnique(allocateInfo);
-        assert(descriptorSetsUniqueVec.size() == MAX_FRAMES_IN_FLIGHT);
+        auto descriptorSetsVec = device.allocateDescriptorSets(allocateInfo);
+        assert(descriptorSetsVec.size() == MAX_FRAMES_IN_FLIGHT);
         for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-            m_frameData[i].uboDescriptorSet = std::move(descriptorSetsUniqueVec[i]);
+            // move to stack instead of keeping dynamic allocation
+            m_frameData[i].uboDescriptorSet = descriptorSetsVec[i];
         }
     }
 
@@ -169,7 +170,7 @@ vk::UniqueDescriptorSetLayout Renderer::createUbosDescriptorSets()
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         auto& frameData = m_frameData[i];
         bufferInfo.buffer = frameData.ubo.buffer();
-        descriptorWrite.dstSet = *frameData.uboDescriptorSet;
+        descriptorWrite.dstSet = frameData.uboDescriptorSet;
         device.updateDescriptorSets(descriptorWrite, nullptr);
     }
     DEBUG("Successfully created UBO descriptor sets\n");
@@ -393,7 +394,7 @@ void Renderer::drawFrame()
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
                                      *m_graphicsPipelineLayout,
                                      0,
-                                     *frameData.uboDescriptorSet,
+                                     frameData.uboDescriptorSet,
                                      nullptr);
     commandBuffer.drawIndexed(m_testMesh.numIndices(), 1, 0, 0, 0);
 

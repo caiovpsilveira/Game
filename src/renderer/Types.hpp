@@ -100,7 +100,7 @@ struct FrameCommandData {
 struct FrameData {
     FrameCommandData commandData;
     AllocatedBuffer ubo;
-    vk::UniqueDescriptorSet uboDescriptorSet;
+    vk::DescriptorSet uboDescriptorSet;   // owned by the pool
 };
 
 }   // namespace renderer
