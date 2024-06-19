@@ -28,12 +28,15 @@ public:
     void setShaders(const std::filesystem::path& vertexShaderSourcePath,
                     const std::filesystem::path& fragmentShaderSourcePath);
 
+    void setPipelineLayout(vk::PipelineLayout layout) noexcept;
+
     vk::UniquePipeline build(vk::Format swapchainColorFormat);
 
 private:
     vk::Device m_device;   // not owned
     vk::UniqueShaderModule m_vertShaderModule;
     vk::UniqueShaderModule m_fragShaderModule;
+    vk::PipelineLayout m_pipelineLayout;   // not owned
 };
 
 }   // namespace renderer

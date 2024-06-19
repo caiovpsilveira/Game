@@ -86,6 +86,13 @@ AllocatedBuffer::~AllocatedBuffer() noexcept
         vmaDestroyBuffer(m_allocator, m_buffer, m_allocation);
     }
 }
+
+VmaAllocationInfo AllocatedBuffer::allocationInfo() const noexcept
+{
+    VmaAllocationInfo allocationInfo;
+    vmaGetAllocationInfo(m_allocator, m_allocation, &allocationInfo);
+    return allocationInfo;
+}
 // End AllocatedBuffer
 
 // Begin Mesh

@@ -41,7 +41,7 @@ public:
 
 public:
     vk::Buffer buffer() const noexcept { return m_buffer; }
-    VmaAllocation allocation() const noexcept { return m_allocation; }
+    VmaAllocationInfo allocationInfo() const noexcept;
 
 private:
     VmaAllocator m_allocator = nullptr;   // not owned
@@ -83,6 +83,12 @@ struct TransferData {
     vk::UniqueFence fence;
 };
 
+struct UniformBufferObject {
+    glm::mat4 model;
+    glm::mat4 view;
+    glm::mat4 proj;
+};
+
 struct FrameCommandData {
     vk::UniqueCommandPool commandPool;
     vk::UniqueCommandBuffer commandBuffer;
@@ -93,6 +99,7 @@ struct FrameCommandData {
 
 struct FrameData {
     FrameCommandData commandData;
+    AllocatedBuffer ubo;
 };
 
 }   // namespace renderer

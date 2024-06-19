@@ -28,15 +28,19 @@ public:
 
 private:
     void initTransferData();
+    void initFrameData();
     void initFrameCommandData();
-    void createGraphicsPipeline();
+    void createDescriptorsAndGraphicsPipeline();
     void uploadMesh();
+
+    void updateUbo(const AllocatedBuffer& ubo, const vk::Extent2D& swapchainExtent);
 
 private:
     static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
     VulkanGraphicsContext m_vkContext;
 
+    vk::UniquePipelineLayout m_graphicsPipelineLayout;
     vk::UniquePipeline m_graphicsPipeline;
     TransferData m_transferData;
 

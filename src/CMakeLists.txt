@@ -5,6 +5,8 @@ target_sources(game PRIVATE
                renderer/VulkanGraphicsContext.cpp
                renderer/Types.cpp
                renderer/Utils.cpp
+               renderer/DescriptorSetLayoutBuilder.cpp
+               renderer/PipelineLayoutBuilder.cpp
                renderer/GraphicsPipelineBuilder.cpp
                renderer/Renderer.cpp
                #

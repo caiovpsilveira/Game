@@ -24,6 +24,11 @@ void GraphicsPipelineBuilder::setShaders(const std::filesystem::path& vertexShad
     m_fragShaderModule = utils::createUniqueShaderModule(m_device, fragShaderCode);
 }
 
+void GraphicsPipelineBuilder::setPipelineLayout(vk::PipelineLayout layout) noexcept
+{
+    m_pipelineLayout = layout;
+}
+
 vk::UniquePipeline GraphicsPipelineBuilder::build(vk::Format swapchainColorFormat)
 {
     // Shaders
@@ -145,17 +150,6 @@ vk::UniquePipeline GraphicsPipelineBuilder::build(vk::Format swapchainColorForma
                                                          .depthAttachmentFormat = vk::Format::eUndefined,
                                                          .stencilAttachmentFormat = vk::Format::eUndefined};
 
-    // Pipeline Layout
-    vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo {.sType = vk::StructureType::ePipelineLayoutCreateInfo,
-                                                           .pNext = nullptr,
-                                                           .flags = {},
-                                                           .setLayoutCount = 0,
-                                                           .pSetLayouts = nullptr,
-                                                           .pushConstantRangeCount = 0,
-                                                           .pPushConstantRanges = nullptr};
-
-    vk::UniquePipelineLayout pipelineLayout = m_device.createPipelineLayoutUnique(pipelineLayoutCreateInfo);
-
     // Graphics pipeline
     vk::GraphicsPipelineCreateInfo pipelineCreateInfo {.sType = vk::StructureType::eGraphicsPipelineCreateInfo,
                                                        .pNext = &renderingCreateInfo,
@@ -171,7 +165,7 @@ vk::UniquePipeline GraphicsPipelineBuilder::build(vk::Format swapchainColorForma
                                                        .pDepthStencilState = nullptr,
                                                        .pColorBlendState = &colorBlendStateCreateInfo,
                                                        .pDynamicState = &dynamicStateCreateInfo,
-                                                       .layout = *pipelineLayout,
+                                                       .layout = m_pipelineLayout,
                                                        .renderPass = nullptr,
                                                        .subpass = 0,
                                                        .basePipelineHandle = nullptr,

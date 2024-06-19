@@ -1,11 +1,15 @@
 #include "Renderer.hpp"
 
+#include "DescriptorSetLayoutBuilder.hpp"
 #include "GraphicsPipelineBuilder.hpp"
+#include "PipelineLayoutBuilder.hpp"
 #include "Utils.hpp"
 #include "core/Logger.hpp"
 
 // libs
 #include <SDL_vulkan.h>
+#include <glm/ext/matrix_clip_space.hpp>
+#include <glm/ext/matrix_transform.hpp>
 
 // std
 #include <cstdint>
@@ -52,8 +56,8 @@ Renderer::Renderer(SDL_Window* window)
     m_vkContext = VulkanGraphicsContext(createInfo);
 
     initTransferData();
-    initFrameCommandData();
-    createGraphicsPipeline();
+    initFrameData();
+    createDescriptorsAndGraphicsPipeline();
     uploadMesh();
 }
 
@@ -82,6 +86,22 @@ void Renderer::initTransferData()
 
     m_transferData.fence = device.createFenceUnique(fenceCreateInfo);
     DEBUG("Successfully created transfer data\n");
+}
+
+void Renderer::initFrameData()
+{
+    initFrameCommandData();
+
+    // TODO: use vkCmdUpdateBuffer instead of mapped memory to update the UBO
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        m_frameData[i].ubo =
+            AllocatedBuffer(m_vkContext.allocator(),
+                            sizeof(UniformBufferObject),
+                            vk::BufferUsageFlagBits::eUniformBuffer,
+                            VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+                            VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE);
+    }
+    DEBUG("Successfully created frame UBOs\n");
 }
 
 void Renderer::initFrameCommandData()
@@ -119,12 +139,21 @@ void Renderer::initFrameCommandData()
     DEBUG("Successfully created frame command data\n");
 }
 
-void Renderer::createGraphicsPipeline()
+void Renderer::createDescriptorsAndGraphicsPipeline()
 {
-    GraphicsPipelineBuilder builder(m_vkContext.device());
+    const auto& device = m_vkContext.device();
+    DescriptorSetLayoutBuilder descriptorSetLayoutBuilder(device);
+    descriptorSetLayoutBuilder.addBinding(vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex);
+    vk::UniqueDescriptorSetLayout uboSetLayout = descriptorSetLayoutBuilder.build();
 
-    builder.setShaders("../shaders/simple_shader.vert.spv", "../shaders/simple_shader.frag.spv");
-    m_graphicsPipeline = builder.build(m_vkContext.swapchainColorFormat());
+    PipelineLayoutBuilder pipelineLayoutBuilder(device);
+    pipelineLayoutBuilder.addDescriptorSetLayout(std::move(uboSetLayout));
+    m_graphicsPipelineLayout = pipelineLayoutBuilder.build();
+
+    GraphicsPipelineBuilder pipelineBuilder(device);
+    pipelineBuilder.setShaders("../shaders/simple_shader.vert.spv", "../shaders/simple_shader.frag.spv");
+    pipelineBuilder.setPipelineLayout(*m_graphicsPipelineLayout);
+    m_graphicsPipeline = pipelineBuilder.build(m_vkContext.swapchainColorFormat());
     DEBUG("Successfully created graphics pipeline\n");
 }
 
@@ -148,8 +177,7 @@ void Renderer::uploadMesh()
                                       VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
                                   VMA_MEMORY_USAGE_AUTO);
 
-    VmaAllocationInfo stagingAllocationInfo;
-    vmaGetAllocationInfo(allocator, stagingBuffer.allocation(), &stagingAllocationInfo);
+    VmaAllocationInfo stagingAllocationInfo = stagingBuffer.allocationInfo();
     auto& stagingData = stagingAllocationInfo.pMappedData;
     // copy vertex buffer data
     std::memcpy(stagingData, vertices.data(), vertexBufferSize);
@@ -198,11 +226,30 @@ void Renderer::uploadMesh()
     DEBUG("Successfully uploaded mesh\n");
 }
 
+void Renderer::updateUbo(const AllocatedBuffer& ubo, const vk::Extent2D& swapchainExtent)
+{
+    static auto startTime = std::chrono::high_resolution_clock::now();
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+    UniformBufferObject uboData {};
+    uboData.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    uboData.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    uboData.proj =
+        glm::perspective(glm::radians(45.0f), swapchainExtent.width / (float) swapchainExtent.height, 0.1f, 10.0f);
+    uboData.proj[1][1] *= -1;
+
+    auto allocationInfo = ubo.allocationInfo();
+    auto& data = allocationInfo.pMappedData;
+    std::memcpy(data, &uboData, sizeof(uboData));
+}
+
 void Renderer::drawFrame()
 {
     const auto& device = m_vkContext.device();
     const auto& swapchain = m_vkContext.swapchain();
     const auto& frameData = m_frameData[m_frameCount % MAX_FRAMES_IN_FLIGHT];
+    const auto& swapchainExtent = m_vkContext.swapchainExtent();
 
     const auto& frameCommandData = frameData.commandData;
     const auto& commandBuffer = *frameCommandData.commandBuffer;
@@ -230,6 +277,8 @@ void Renderer::drawFrame()
 
     commandBuffer.begin(commandBufferBeginInfo);
 
+    updateUbo(frameData.ubo, swapchainExtent);
+
     utils::transitionImage(commandBuffer,
                            m_vkContext.swapchainImage(imgRes.value),
                            vk::ImageLayout::eUndefined,
@@ -250,7 +299,7 @@ void Renderer::drawFrame()
         .sType = vk::StructureType::eRenderingInfo,
         .pNext = nullptr,
         .flags = {},
-        .renderArea = {vk::Offset2D {0, 0}, m_vkContext.swapchainExtent()},
+        .renderArea = {vk::Offset2D {0, 0}, swapchainExtent},
         .layerCount = 1,
         .viewMask = 0,
         .colorAttachmentCount = 1,
@@ -266,15 +315,15 @@ void Renderer::drawFrame()
     // set dynamic viewport and scissor
     vk::Viewport viewport {.x = 0.f,
                            .y = 0.f,
-                           .width = static_cast<float>(m_vkContext.swapchainExtent().width),
-                           .height = static_cast<float>(m_vkContext.swapchainExtent().height),
+                           .width = static_cast<float>(swapchainExtent.width),
+                           .height = static_cast<float>(swapchainExtent.height),
                            .minDepth = 0.f,
                            .maxDepth = 1.f};
     commandBuffer.setViewport(0, viewport);
 
     vk::Rect2D scissor {
         .offset = {0, 0},
-        .extent = m_vkContext.swapchainExtent()
+        .extent = swapchainExtent
     };
     commandBuffer.setScissor(0, scissor);
 
