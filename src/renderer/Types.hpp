@@ -105,8 +105,6 @@ private:
 
 struct TransferCommandData {
     vk::UniqueCommandPool commandPool;
-    vk::UniqueCommandBuffer commandBuffer;
-    vk::UniqueFence fence;
 };
 
 struct UniformBufferObject {

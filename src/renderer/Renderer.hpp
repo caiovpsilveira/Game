@@ -34,8 +34,11 @@ private:
 
     void createGraphicsPipeline(vk::UniqueDescriptorSetLayout&& uboSetLayout);
     void initTransferCommandData();
-    void uploadMesh();
 
+    vk::UniqueCommandBuffer beginSingleTimeTransferCommand();
+    void endSingleTimeTransferCommand(vk::UniqueCommandBuffer&& commandBuffer);
+
+    void uploadMesh();
     void updateUbo(vk::CommandBuffer command, vk::Buffer ubo, const vk::Extent2D& swapchainExtent);
 
 private:

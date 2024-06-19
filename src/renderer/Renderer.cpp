@@ -200,29 +200,60 @@ void Renderer::initTransferCommandData()
                                                      .queueFamilyIndex = m_vkContext.transferQueueFamilyIndex()};
 
     m_transferCommandData.commandPool = device.createCommandPoolUnique(commandPoolCreateInfo);
+    DEBUG("Successfully created transfer command data\n");
+}
 
+vk::UniqueCommandBuffer Renderer::beginSingleTimeTransferCommand()
+{
     vk::CommandBufferAllocateInfo commandBufferAllocateInfo {.sType = vk::StructureType::eCommandBufferAllocateInfo,
                                                              .pNext = nullptr,
                                                              .commandPool = *m_transferCommandData.commandPool,
                                                              .level = vk::CommandBufferLevel::ePrimary,
                                                              .commandBufferCount = 1};
 
-    m_transferCommandData.commandBuffer = std::move(device.allocateCommandBuffersUnique(commandBufferAllocateInfo)[0]);
+    vk::UniqueCommandBuffer commandBuffer =
+        std::move(m_vkContext.device().allocateCommandBuffersUnique(commandBufferAllocateInfo)[0]);
 
-    vk::FenceCreateInfo fenceCreateInfo {.sType = vk::StructureType::eFenceCreateInfo,
-                                         .pNext = nullptr,
-                                         .flags = vk::FenceCreateFlagBits::eSignaled};
+    vk::CommandBufferBeginInfo commandBufferBeginInfo {.sType = vk::StructureType::eCommandBufferBeginInfo,
+                                                       .pNext = nullptr,
+                                                       .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
+                                                       .pInheritanceInfo = nullptr};
 
-    m_transferCommandData.fence = device.createFenceUnique(fenceCreateInfo);
-    DEBUG("Successfully created transfer command data\n");
+    commandBuffer->begin(commandBufferBeginInfo);
+    return commandBuffer;
+}
+
+void Renderer::endSingleTimeTransferCommand(vk::UniqueCommandBuffer&& commandBuffer)
+{
+    commandBuffer->end();
+
+    // Submit and wait
+    vk::CommandBufferSubmitInfo commandBufferSubmitInfo {.sType = vk::StructureType::eCommandBufferSubmitInfo,
+                                                         .pNext = nullptr,
+                                                         .commandBuffer = *commandBuffer,
+                                                         .deviceMask = 0};
+
+    vk::SubmitInfo2 submitInfo2 {.sType = vk::StructureType::eSubmitInfo2,
+                                 .pNext = nullptr,
+                                 .flags = {},
+                                 .waitSemaphoreInfoCount = 0,
+                                 .pWaitSemaphoreInfos = nullptr,
+                                 .commandBufferInfoCount = 1,
+                                 .pCommandBufferInfos = &commandBufferSubmitInfo,
+                                 .signalSemaphoreInfoCount = 0,
+                                 .pSignalSemaphoreInfos = nullptr};
+
+    const auto& queue = m_vkContext.transferQueue();
+    queue.submit2(submitInfo2, nullptr);
+    // TODO: have a vector of fences in transferCommandData, and have a single wait instead of waiting for each
+    // individual command?
+    queue.waitIdle();
 }
 
 void Renderer::uploadMesh()
 {
     const auto& device = m_vkContext.device();
     const auto& allocator = m_vkContext.allocator();
-    const auto& commandBuffer = *m_transferCommandData.commandBuffer;
-    const auto& fence = *m_transferCommandData.fence;
 
     const vk::DeviceSize vertexBufferSize = vertices.size() * sizeof(vertices[0]);
     const vk::DeviceSize indexBufferSize = indices.size() * sizeof(indices[0]);
@@ -244,45 +275,15 @@ void Renderer::uploadMesh()
     // copy index buffer data
     std::memcpy((char*) stagingData + vertexBufferSize, indices.data(), indexBufferSize);
 
+    auto commandBuffer = beginSingleTimeTransferCommand();
     // Record vkCmdCopyBuffer from staging buffer to device mesh vertex buffer and index buffer
-    [[maybe_unused]] auto fenceRes = device.waitForFences(fence, true, std::numeric_limits<uint64_t>::max());
-    device.resetFences(fence);
-
-    commandBuffer.reset();
-
-    vk::CommandBufferBeginInfo commandBufferBeginInfo {.sType = vk::StructureType::eCommandBufferBeginInfo,
-                                                       .pNext = nullptr,
-                                                       .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
-                                                       .pInheritanceInfo = nullptr};
-
-    commandBuffer.begin(commandBufferBeginInfo);
-
     vk::BufferCopy vertexCopyRegion {.srcOffset = 0, .dstOffset = 0, .size = vertexBufferSize};
-    commandBuffer.copyBuffer(stagingBuffer.buffer(), m_testMesh.vertexBuffer(), vertexCopyRegion);
+    commandBuffer->copyBuffer(stagingBuffer.buffer(), m_testMesh.vertexBuffer(), vertexCopyRegion);
 
     vk::BufferCopy indexCopyRegion {.srcOffset = vertexBufferSize, .dstOffset = 0, .size = indexBufferSize};
-    commandBuffer.copyBuffer(stagingBuffer.buffer(), m_testMesh.indexBuffer(), indexCopyRegion);
+    commandBuffer->copyBuffer(stagingBuffer.buffer(), m_testMesh.indexBuffer(), indexCopyRegion);
 
-    commandBuffer.end();
-
-    // Submit and wait
-    vk::CommandBufferSubmitInfo commandBufferSubmitInfo {.sType = vk::StructureType::eCommandBufferSubmitInfo,
-                                                         .pNext = nullptr,
-                                                         .commandBuffer = commandBuffer,
-                                                         .deviceMask = 0};
-
-    vk::SubmitInfo2 submitInfo2 {.sType = vk::StructureType::eSubmitInfo2,
-                                 .pNext = nullptr,
-                                 .flags = {},
-                                 .waitSemaphoreInfoCount = 0,
-                                 .pWaitSemaphoreInfos = nullptr,
-                                 .commandBufferInfoCount = 1,
-                                 .pCommandBufferInfos = &commandBufferSubmitInfo,
-                                 .signalSemaphoreInfoCount = 0,
-                                 .pSignalSemaphoreInfos = nullptr};
-
-    m_vkContext.transferQueue().submit2(submitInfo2, fence);
-    fenceRes = device.waitForFences(fence, true, std::numeric_limits<uint64_t>::max());
+    endSingleTimeTransferCommand(std::move(commandBuffer));
     DEBUG("Successfully uploaded mesh\n");
 }
 
