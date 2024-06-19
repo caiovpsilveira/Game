@@ -117,13 +117,12 @@ void Renderer::createUboDescriptorPool()
 
 void Renderer::allocateFrameUboBuffers()
 {
-    // TODO: use vkCmdUpdateBuffer instead of mapped memory to update the UBO
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         m_frameData[i].ubo =
             AllocatedBuffer(m_vkContext.allocator(),
                             sizeof(UniformBufferObject),
-                            vk::BufferUsageFlagBits::eUniformBuffer,
-                            VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+                            vk::BufferUsageFlagBits::eUniformBuffer | vk::BufferUsageFlagBits::eTransferDst,
+                            0,
                             VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE);
     }
     DEBUG("Successfully allocated frame UBOs buffers\n");
@@ -287,7 +286,7 @@ void Renderer::uploadMesh()
     DEBUG("Successfully uploaded mesh\n");
 }
 
-void Renderer::updateUbo(const AllocatedBuffer& ubo, const vk::Extent2D& swapchainExtent)
+void Renderer::updateUbo(vk::CommandBuffer command, vk::Buffer ubo, const vk::Extent2D& swapchainExtent)
 {
     static auto startTime = std::chrono::high_resolution_clock::now();
     auto currentTime = std::chrono::high_resolution_clock::now();
@@ -300,9 +299,7 @@ void Renderer::updateUbo(const AllocatedBuffer& ubo, const vk::Extent2D& swapcha
         glm::perspective(glm::radians(45.0f), swapchainExtent.width / (float) swapchainExtent.height, 0.1f, 10.0f);
     uboData.proj[1][1] *= -1;
 
-    auto allocationInfo = ubo.allocationInfo();
-    auto& data = allocationInfo.pMappedData;
-    std::memcpy(data, &uboData, sizeof(uboData));
+    command.updateBuffer(ubo, 0, sizeof(uboData), &uboData);
 }
 
 void Renderer::drawFrame()
@@ -338,7 +335,7 @@ void Renderer::drawFrame()
 
     commandBuffer.begin(commandBufferBeginInfo);
 
-    updateUbo(frameData.ubo, swapchainExtent);
+    updateUbo(commandBuffer, frameData.ubo.buffer(), swapchainExtent);
 
     utils::transitionImage(commandBuffer,
                            m_vkContext.swapchainImage(imgRes.value),

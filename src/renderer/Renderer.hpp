@@ -36,7 +36,7 @@ private:
     void initTransferCommandData();
     void uploadMesh();
 
-    void updateUbo(const AllocatedBuffer& ubo, const vk::Extent2D& swapchainExtent);
+    void updateUbo(vk::CommandBuffer command, vk::Buffer ubo, const vk::Extent2D& swapchainExtent);
 
 private:
     static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
