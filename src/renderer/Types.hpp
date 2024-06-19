@@ -77,6 +77,32 @@ private:
     uint32_t m_numIndices;
 };
 
+class Allocated2DImage
+{
+public:
+    Allocated2DImage() noexcept = default;
+    Allocated2DImage(VmaAllocator allocator,
+                     vk::Format format,
+                     const vk::Extent2D& extent,
+                     vk::ImageTiling tiling,
+                     vk::ImageUsageFlags usage,
+                     VmaAllocatorCreateFlags allocationFlags,
+                     VmaMemoryUsage memoryUsage);
+
+    Allocated2DImage(const Allocated2DImage&) = delete;
+    Allocated2DImage& operator=(const Allocated2DImage&) = delete;
+
+    Allocated2DImage(Allocated2DImage&&) noexcept;
+    Allocated2DImage& operator=(Allocated2DImage&&) noexcept;
+
+    ~Allocated2DImage() noexcept;
+
+private:
+    VmaAllocator m_allocator = nullptr;   // not owned
+    vk::Image m_image;
+    VmaAllocation m_allocation;
+};
+
 struct TransferCommandData {
     vk::UniqueCommandPool commandPool;
     vk::UniqueCommandBuffer commandBuffer;

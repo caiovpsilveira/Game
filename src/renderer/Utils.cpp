@@ -42,8 +42,6 @@ std::vector<char> readFile(const std::filesystem::path& path)
 
 vk::UniqueShaderModule createUniqueShaderModule(vk::Device device, std::span<const char> code)
 {
-    // must be uint32_t alligned to be converted
-    assert(code.size() % sizeof(uint32_t) == 0);
     vk::ShaderModuleCreateInfo createInfo {.sType = vk::StructureType::eShaderModuleCreateInfo,
                                            .pNext = nullptr,
                                            .flags = {},
