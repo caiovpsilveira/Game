@@ -248,6 +248,7 @@ void Renderer::endSingleTimeTransferCommand(vk::UniqueCommandBuffer&& commandBuf
     // TODO: have a vector of fences in transferCommandData, and have a single wait instead of waiting for each
     // individual command?
     queue.waitIdle();
+    m_vkContext.device().resetCommandPool(*m_transferCommandData.commandPool);
 }
 
 void Renderer::uploadMesh()
