@@ -273,7 +273,7 @@ void Renderer::uploadMesh()
     // copy vertex buffer data
     std::memcpy(stagingData, vertices.data(), vertexBufferSize);
     // copy index buffer data
-    std::memcpy((char*) stagingData + vertexBufferSize, indices.data(), indexBufferSize);
+    std::memcpy(static_cast<char*>(stagingData) + vertexBufferSize, indices.data(), indexBufferSize);
 
     auto commandBuffer = beginSingleTimeTransferCommand();
     // Record vkCmdCopyBuffer from staging buffer to device mesh vertex buffer and index buffer
