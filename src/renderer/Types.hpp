@@ -52,6 +52,7 @@ private:
 class Mesh
 {
 public:
+    // TODO: allow different index types other than uint32_t, for smaller meshes
     Mesh() noexcept = default;
     // Only allocates the buffers on the device. The buffers still have to be filled with a staging buffer.
     // TODO: improve this?
