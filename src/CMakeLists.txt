@@ -59,9 +59,9 @@ target_compile_definitions(game PRIVATE
 target_include_directories(game PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries_system(game PUBLIC glm SDL2 STB_IMAGE)
 
-target_compile_options(game PRIVATE -Wall -Wextra -pedantic -Wcast-align -Wcast-qual -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self -Wmissing-declarations -Wmissing-include-dirs -Wold-style-cast -Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wstrict-overflow=5 -Wswitch-default -Wundef -Werror -Wno-unused)
+target_compile_options(game PRIVATE -Wall -Wextra -pedantic -Wcast-align -Wcast-qual -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self -Wmissing-declarations -Wmissing-include-dirs -Wold-style-cast -Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wstrict-overflow=5 -Wswitch-default -Wundef -Werror)
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_compile_options(game PRIVATE -Wno-nullability-extension)
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    target_compile_options(game PRIVATE -Wnoexcept -Wlogical-op -Wstrict-null-sentinel)
+    target_compile_options(game PRIVATE -Wnoexcept -Wlogical-op -Wstrict-null-sentinel -Wzero-as-null-pointer-constant -Wuseless-cast)
 endif()

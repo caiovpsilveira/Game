@@ -52,11 +52,11 @@ VkBool32 debugMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSe
     return VK_FALSE;
 }
 
-bool isValidationLayerSupported()
+bool isValidationLayerSupported() noexcept
 {
     auto instanceLayerProperties = vk::enumerateInstanceLayerProperties();
 
-    auto match = [](const vk::LayerProperties& p) {
+    auto match = [](const vk::LayerProperties& p) noexcept {
         return std::strcmp(p.layerName, "VK_LAYER_KHRONOS_validation") == 0;
     };
 
@@ -410,7 +410,7 @@ void VulkanGraphicsContext::createAllocator(uint32_t vulkanApiVersion, bool useB
 
     VmaAllocatorCreateInfo allocatorCreateInfo {.flags = useBufferDeviceAddressFeature
                                                              ? VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT
-                                                             : static_cast<VmaAllocatorCreateFlags>(0),
+                                                             : VmaAllocatorCreateFlags(),
                                                 .physicalDevice = m_physicalDevice,
                                                 .device = *m_device,
                                                 .preferredLargeHeapBlockSize = 0,
