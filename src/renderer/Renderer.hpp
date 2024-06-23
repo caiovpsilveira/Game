@@ -33,6 +33,8 @@ private:
     void initTransferCommandData();
     void initFrameCommandData();
 
+    void createTextureSampler();
+
     void createUboDescriptorPool();
     void allocateFrameUboBuffers();
     vk::UniqueDescriptorSetLayout createUbosDescriptorSets();
@@ -60,6 +62,8 @@ private:
     TransferCommandData m_transferCommandData;
     size_t m_frameCount = 0;
     FrameData m_frameData[MAX_FRAMES_IN_FLIGHT];
+
+    vk::UniqueSampler m_textureSampler;
 
     vk::UniqueDescriptorPool m_uboDescriptorPool;
     vk::UniquePipelineLayout m_graphicsPipelineLayout;

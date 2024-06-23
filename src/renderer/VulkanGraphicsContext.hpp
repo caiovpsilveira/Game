@@ -47,6 +47,7 @@ public:
     ~VulkanGraphicsContext() noexcept = default;
 
 public:
+    vk::PhysicalDevice physicalDevice() const noexcept { return m_physicalDevice; }
     vk::Device device() const noexcept { return m_device.get(); }
 
     uint32_t graphicsQueueFamilyIndex() const noexcept { return m_queueFamiliesIndices.graphicsFamilyIndex; }

@@ -38,6 +38,8 @@ Renderer::Renderer(SDL_Window* window)
 
     std::vector<const char*> requiredDeviceExtensions {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
+    vk::PhysicalDeviceFeatures features10 {};
+    features10.samplerAnisotropy = true;
     vk::PhysicalDeviceVulkan12Features features12 {};
     features12.bufferDeviceAddress = true;
     vk::PhysicalDeviceVulkan13Features features13 {};
@@ -51,12 +53,15 @@ Renderer::Renderer(SDL_Window* window)
     createInfo.enableValidationLayersIfSupported = true;
     createInfo.enableDebugMessengerIfSupported = true;
     createInfo.window = window;
+    createInfo.requiredDevice10Features = &features10;
     createInfo.requiredDevice12Features = &features12;
     createInfo.requiredDevice13Features = &features13;
     m_vkContext = VulkanGraphicsContext(createInfo);
 
     initTransferCommandData();
     initFrameCommandData();
+
+    createTextureSampler();
 
     createUboDescriptorPool();
     allocateFrameUboBuffers();
@@ -114,6 +119,33 @@ void Renderer::initFrameCommandData()
         commandData.renderFence = m_vkContext.device().createFenceUnique(fenceCreateInfo);
     }
     DEBUG("Successfully created frame command data\n");
+}
+
+void Renderer::createTextureSampler()
+{
+    auto properties = m_vkContext.physicalDevice().getProperties();
+
+    vk::SamplerCreateInfo samplerCreateInfo {.sType = vk::StructureType::eSamplerCreateInfo,
+                                             .pNext = nullptr,
+                                             .flags = {},
+                                             .magFilter = vk::Filter::eLinear,
+                                             .minFilter = vk::Filter::eLinear,
+                                             .mipmapMode = vk::SamplerMipmapMode::eLinear,
+                                             .addressModeU = vk::SamplerAddressMode::eRepeat,
+                                             .addressModeV = vk::SamplerAddressMode::eRepeat,
+                                             .addressModeW = vk::SamplerAddressMode::eRepeat,
+                                             .mipLodBias = 0.f,
+                                             .anisotropyEnable = vk::True,
+                                             .maxAnisotropy = properties.limits.maxSamplerAnisotropy,
+                                             .compareEnable = vk::False,
+                                             .compareOp = vk::CompareOp::eAlways,
+                                             .minLod = 0.f,
+                                             .maxLod = 0.f,
+                                             .borderColor = vk::BorderColor::eIntOpaqueBlack,
+                                             .unnormalizedCoordinates = vk::False};
+
+    m_textureSampler = m_vkContext.device().createSamplerUnique(samplerCreateInfo);
+    DEBUG("Successfully created texture sampler\n");
 }
 
 void Renderer::createUboDescriptorPool()
