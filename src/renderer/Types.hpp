@@ -45,8 +45,8 @@ public:
 
 private:
     VmaAllocator m_allocator = nullptr;   // not owned
-    vk::Buffer m_buffer;
     VmaAllocation m_allocation;
+    vk::Buffer m_buffer;
 };
 
 class Mesh
@@ -82,7 +82,8 @@ class Allocated2DImage
 {
 public:
     Allocated2DImage() noexcept = default;
-    Allocated2DImage(VmaAllocator allocator,
+    Allocated2DImage(vk::Device device,
+                     VmaAllocator allocator,
                      vk::Format format,
                      const vk::Extent2D& extent,
                      vk::ImageTiling tiling,
@@ -103,8 +104,9 @@ public:
 
 private:
     VmaAllocator m_allocator = nullptr;   // not owned
-    vk::Image m_image;
     VmaAllocation m_allocation;
+    vk::Image m_image;
+    vk::UniqueImageView m_imageView;
 };
 
 struct TransferCommandData {

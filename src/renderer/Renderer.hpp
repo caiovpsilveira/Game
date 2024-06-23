@@ -41,7 +41,6 @@ private:
     vk::UniqueCommandBuffer beginSingleTimeTransferCommand();
     void endSingleTimeTransferCommand(vk::UniqueCommandBuffer&& commandBuffer);
 
-    void uploadMesh();
     void transitionImageLayout(vk::CommandBuffer commandBuffer,
                                vk::Image image,
                                vk::Format format,
@@ -49,6 +48,9 @@ private:
                                vk::ImageLayout newLayout);
     Allocated2DImage createTextureImage(const std::filesystem::path& path);
     void updateUbo(vk::CommandBuffer command, vk::Buffer ubo, const vk::Extent2D& swapchainExtent);
+
+    void uploadMesh();
+    void uploadTexture();
 
 private:
     static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
@@ -65,6 +67,7 @@ private:
     FrameData m_frameData[MAX_FRAMES_IN_FLIGHT];
 
     Mesh m_testMesh;
+    Allocated2DImage m_testTexture;
 };
 
 }   // namespace renderer

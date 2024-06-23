@@ -61,7 +61,9 @@ Renderer::Renderer(SDL_Window* window)
     vk::UniqueDescriptorSetLayout uboSetLayout = createUbosDescriptorSets();
     createGraphicsPipeline(std::move(uboSetLayout));
     initTransferCommandData();
+
     uploadMesh();
+    uploadTexture();
 }
 
 void Renderer::initFrameCommandData()
@@ -251,43 +253,6 @@ void Renderer::endSingleTimeTransferCommand(vk::UniqueCommandBuffer&& commandBuf
     m_vkContext.device().resetCommandPool(*m_transferCommandData.commandPool);
 }
 
-void Renderer::uploadMesh()
-{
-    const auto& device = m_vkContext.device();
-    const auto& allocator = m_vkContext.allocator();
-
-    const vk::DeviceSize vertexBufferSize = vertices.size() * sizeof(vertices[0]);
-    const vk::DeviceSize indexBufferSize = indices.size() * sizeof(indices[0]);
-
-    m_testMesh = Mesh(device, allocator, vertexBufferSize, indexBufferSize);
-
-    // create staging buffer, contiguous memory containing [vertexBufferData, indexBufferData]
-    AllocatedBuffer stagingBuffer(allocator,
-                                  vertexBufferSize + indexBufferSize,
-                                  vk::BufferUsageFlagBits::eTransferSrc,
-                                  VMA_ALLOCATION_CREATE_MAPPED_BIT |
-                                      VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
-                                  VMA_MEMORY_USAGE_AUTO);
-
-    VmaAllocationInfo stagingAllocationInfo = stagingBuffer.allocationInfo();
-    auto& stagingData = stagingAllocationInfo.pMappedData;
-    // copy vertex buffer data
-    std::memcpy(stagingData, vertices.data(), vertexBufferSize);
-    // copy index buffer data
-    std::memcpy(static_cast<char*>(stagingData) + vertexBufferSize, indices.data(), indexBufferSize);
-
-    auto commandBuffer = beginSingleTimeTransferCommand();
-    // Record vkCmdCopyBuffer from staging buffer to device mesh vertex buffer and index buffer
-    vk::BufferCopy vertexCopyRegion {.srcOffset = 0, .dstOffset = 0, .size = vertexBufferSize};
-    commandBuffer->copyBuffer(stagingBuffer.buffer(), m_testMesh.vertexBuffer(), vertexCopyRegion);
-
-    vk::BufferCopy indexCopyRegion {.srcOffset = vertexBufferSize, .dstOffset = 0, .size = indexBufferSize};
-    commandBuffer->copyBuffer(stagingBuffer.buffer(), m_testMesh.indexBuffer(), indexCopyRegion);
-
-    endSingleTimeTransferCommand(std::move(commandBuffer));
-    DEBUG("Successfully uploaded mesh\n");
-}
-
 void Renderer::transitionImageLayout(vk::CommandBuffer commandBuffer,
                                      vk::Image image,
                                      vk::Format format,
@@ -380,7 +345,8 @@ Allocated2DImage Renderer::createTextureImage(const std::filesystem::path& path)
     auto& data = stagingAllocationInfo.pMappedData;
     std::memcpy(data, pixels.get(), static_cast<size_t>(imageSize));
 
-    Allocated2DImage image(allocator,
+    Allocated2DImage image(m_vkContext.device(),
+                           allocator,
                            vk::Format::eR8G8B8A8Srgb,
                            {.width = static_cast<uint32_t>(texWidth), .height = static_cast<uint32_t>(texHeight)},
                            vk::ImageTiling::eOptimal,
@@ -439,6 +405,49 @@ void Renderer::updateUbo(vk::CommandBuffer command, vk::Buffer ubo, const vk::Ex
     uboData.proj[1][1] *= -1;
 
     command.updateBuffer(ubo, 0, sizeof(uboData), &uboData);
+}
+
+void Renderer::uploadMesh()
+{
+    const auto& device = m_vkContext.device();
+    const auto& allocator = m_vkContext.allocator();
+
+    const vk::DeviceSize vertexBufferSize = vertices.size() * sizeof(vertices[0]);
+    const vk::DeviceSize indexBufferSize = indices.size() * sizeof(indices[0]);
+
+    m_testMesh = Mesh(device, allocator, vertexBufferSize, indexBufferSize);
+
+    // create staging buffer, contiguous memory containing [vertexBufferData, indexBufferData]
+    AllocatedBuffer stagingBuffer(allocator,
+                                  vertexBufferSize + indexBufferSize,
+                                  vk::BufferUsageFlagBits::eTransferSrc,
+                                  VMA_ALLOCATION_CREATE_MAPPED_BIT |
+                                      VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+                                  VMA_MEMORY_USAGE_AUTO);
+
+    VmaAllocationInfo stagingAllocationInfo = stagingBuffer.allocationInfo();
+    auto& stagingData = stagingAllocationInfo.pMappedData;
+    // copy vertex buffer data
+    std::memcpy(stagingData, vertices.data(), vertexBufferSize);
+    // copy index buffer data
+    std::memcpy(static_cast<char*>(stagingData) + vertexBufferSize, indices.data(), indexBufferSize);
+
+    auto commandBuffer = beginSingleTimeTransferCommand();
+    // Record vkCmdCopyBuffer from staging buffer to device mesh vertex buffer and index buffer
+    vk::BufferCopy vertexCopyRegion {.srcOffset = 0, .dstOffset = 0, .size = vertexBufferSize};
+    commandBuffer->copyBuffer(stagingBuffer.buffer(), m_testMesh.vertexBuffer(), vertexCopyRegion);
+
+    vk::BufferCopy indexCopyRegion {.srcOffset = vertexBufferSize, .dstOffset = 0, .size = indexBufferSize};
+    commandBuffer->copyBuffer(stagingBuffer.buffer(), m_testMesh.indexBuffer(), indexCopyRegion);
+
+    endSingleTimeTransferCommand(std::move(commandBuffer));
+    DEBUG("Successfully uploaded mesh\n");
+}
+
+void Renderer::uploadTexture()
+{
+    m_testTexture = createTextureImage("../res/images/texture.jpg");
+    DEBUG("Successfully uploaded texture\n");
 }
 
 void Renderer::drawFrame()

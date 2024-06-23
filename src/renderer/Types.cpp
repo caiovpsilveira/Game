@@ -66,16 +66,16 @@ AllocatedBuffer::AllocatedBuffer(VmaAllocator allocator,
 
 AllocatedBuffer::AllocatedBuffer(AllocatedBuffer&& rhs) noexcept
     : m_allocator(std::exchange(rhs.m_allocator, nullptr))
-    , m_buffer(rhs.m_buffer)
     , m_allocation(rhs.m_allocation)
+    , m_buffer(rhs.m_buffer)
 {}
 
 AllocatedBuffer& AllocatedBuffer::operator=(AllocatedBuffer&& rhs) noexcept
 {
     if (this != &rhs) {
         std::swap(m_allocator, rhs.m_allocator);
-        std::swap(m_buffer, rhs.m_buffer);
         std::swap(m_allocation, rhs.m_allocation);
+        std::swap(m_buffer, rhs.m_buffer);
     }
     return *this;
 }
@@ -123,7 +123,8 @@ Mesh::Mesh(vk::Device device, VmaAllocator allocator, vk::DeviceSize vertexBuffe
 // End Mesh
 
 // Begin Allocated2DImage
-Allocated2DImage::Allocated2DImage(VmaAllocator allocator,
+Allocated2DImage::Allocated2DImage(vk::Device device,
+                                   VmaAllocator allocator,
                                    vk::Format format,
                                    const vk::Extent2D& extent,
                                    vk::ImageTiling tiling,
@@ -167,20 +168,47 @@ Allocated2DImage::Allocated2DImage(VmaAllocator allocator,
                                                &m_allocation,
                                                nullptr)),
         "vmaCreateImage");
+
+    vk::ImageViewCreateInfo imageViewCreateInfo {
+        .sType = vk::StructureType::eImageViewCreateInfo,
+        .pNext = nullptr,
+        .flags = {},
+        .image = m_image,
+        .viewType = vk::ImageViewType::e2D,
+        .format = format,
+        .components = {vk::ComponentSwizzle::eIdentity,
+                  vk::ComponentSwizzle::eIdentity,
+                  vk::ComponentSwizzle::eIdentity,
+                  vk::ComponentSwizzle::eIdentity},
+        .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                  .baseMipLevel = 0,
+                  .levelCount = 1,
+                  .baseArrayLayer = 0,
+                  .layerCount = 1}
+    };
+
+    try {
+        m_imageView = device.createImageViewUnique(imageViewCreateInfo);
+    } catch (...) {
+        vmaDestroyImage(m_allocator, m_image, m_allocation);
+        throw;
+    }
 }
 
 Allocated2DImage::Allocated2DImage(Allocated2DImage&& rhs) noexcept
     : m_allocator(std::exchange(rhs.m_allocator, nullptr))
-    , m_image(rhs.m_image)
     , m_allocation(rhs.m_allocation)
+    , m_image(rhs.m_image)
+    , m_imageView(std::exchange(rhs.m_imageView, {}))
 {}
 
 Allocated2DImage& Allocated2DImage::operator=(Allocated2DImage&& rhs) noexcept
 {
     if (this != &rhs) {
         std::swap(m_allocator, rhs.m_allocator);
-        std::swap(m_image, rhs.m_image);
         std::swap(m_allocation, rhs.m_allocation);
+        std::swap(m_image, rhs.m_image);
+        std::swap(m_imageView, rhs.m_imageView);
     }
     return *this;
 }
