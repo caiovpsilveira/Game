@@ -12,13 +12,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 # Enable -stdlib=libc++ for Clang to be able to find std::format
 # Also disable Clang nullability extension warnings, because VMA floods with them
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -Wno-nullability-extension")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
 endif()
 
 add_executable(game)
 
-add_subdirectory(src)
-add_subdirectory(shaders)
 add_subdirectory(third_party)
+add_subdirectory(shaders)
+add_subdirectory(src)
 
 add_dependencies(game shaders)
