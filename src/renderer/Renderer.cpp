@@ -55,15 +55,30 @@ Renderer::Renderer(SDL_Window* window)
     createInfo.requiredDevice13Features = &features13;
     m_vkContext = VulkanGraphicsContext(createInfo);
 
+    initTransferCommandData();
     initFrameCommandData();
+
     createUboDescriptorPool();
     allocateFrameUboBuffers();
     vk::UniqueDescriptorSetLayout uboSetLayout = createUbosDescriptorSets();
+
     createGraphicsPipeline(std::move(uboSetLayout));
-    initTransferCommandData();
 
     uploadMesh();
     uploadTexture();
+}
+
+void Renderer::initTransferCommandData()
+{
+    const auto& device = m_vkContext.device();
+
+    vk::CommandPoolCreateInfo commandPoolCreateInfo {.sType = vk::StructureType::eCommandPoolCreateInfo,
+                                                     .pNext = nullptr,
+                                                     .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+                                                     .queueFamilyIndex = m_vkContext.transferQueueFamilyIndex()};
+
+    m_transferCommandData.commandPool = device.createCommandPoolUnique(commandPoolCreateInfo);
+    DEBUG("Successfully created transfer command data\n");
 }
 
 void Renderer::initFrameCommandData()
@@ -190,19 +205,6 @@ void Renderer::createGraphicsPipeline(vk::UniqueDescriptorSetLayout&& uboSetLayo
     pipelineBuilder.setPipelineLayout(*m_graphicsPipelineLayout);
     m_graphicsPipeline = pipelineBuilder.build();
     DEBUG("Successfully created graphics pipeline\n");
-}
-
-void Renderer::initTransferCommandData()
-{
-    const auto& device = m_vkContext.device();
-
-    vk::CommandPoolCreateInfo commandPoolCreateInfo {.sType = vk::StructureType::eCommandPoolCreateInfo,
-                                                     .pNext = nullptr,
-                                                     .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
-                                                     .queueFamilyIndex = m_vkContext.transferQueueFamilyIndex()};
-
-    m_transferCommandData.commandPool = device.createCommandPoolUnique(commandPoolCreateInfo);
-    DEBUG("Successfully created transfer command data\n");
 }
 
 vk::UniqueCommandBuffer Renderer::beginSingleTimeTransferCommand()
