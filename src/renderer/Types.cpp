@@ -123,8 +123,7 @@ Mesh::Mesh(vk::Device device, VmaAllocator allocator, vk::DeviceSize vertexBuffe
 // End Mesh
 
 // Begin Allocated2DImage
-Allocated2DImage::Allocated2DImage(vk::Device device,
-                                   VmaAllocator allocator,
+Allocated2DImage::Allocated2DImage(VmaAllocator allocator,
                                    vk::Format format,
                                    const vk::Extent2D& extent,
                                    vk::ImageTiling tiling,
@@ -168,12 +167,49 @@ Allocated2DImage::Allocated2DImage(vk::Device device,
                                                &m_allocation,
                                                nullptr)),
         "vmaCreateImage");
+}
+
+Allocated2DImage::Allocated2DImage(Allocated2DImage&& rhs) noexcept
+    : m_allocator(std::exchange(rhs.m_allocator, nullptr))
+    , m_allocation(rhs.m_allocation)
+    , m_image(rhs.m_image)
+{}
+
+Allocated2DImage& Allocated2DImage::operator=(Allocated2DImage&& rhs) noexcept
+{
+    if (this != &rhs) {
+        std::swap(m_allocator, rhs.m_allocator);
+        std::swap(m_allocation, rhs.m_allocation);
+        std::swap(m_image, rhs.m_image);
+    }
+    return *this;
+}
+
+Allocated2DImage::~Allocated2DImage() noexcept
+{
+    if (m_allocator) {
+        vmaDestroyImage(m_allocator, m_image, m_allocation);
+    }
+}
+// End Allocated2DImage
+
+// Begin AllocatedTexture
+AllocatedTexture::AllocatedTexture(vk::Device device,
+                                   VmaAllocator allocator,
+                                   vk::Format format,
+                                   const vk::Extent2D& extent,
+                                   vk::ImageTiling tiling,
+                                   vk::ImageUsageFlags usage,
+                                   VmaAllocatorCreateFlags allocationFlags,
+                                   VmaMemoryUsage memoryUsage)
+{
+    m_image = Allocated2DImage(allocator, format, extent, tiling, usage, allocationFlags, memoryUsage);
 
     vk::ImageViewCreateInfo imageViewCreateInfo {
         .sType = vk::StructureType::eImageViewCreateInfo,
         .pNext = nullptr,
         .flags = {},
-        .image = m_image,
+        .image = m_image.image(),
         .viewType = vk::ImageViewType::e2D,
         .format = format,
         .components = {vk::ComponentSwizzle::eIdentity,
@@ -187,38 +223,8 @@ Allocated2DImage::Allocated2DImage(vk::Device device,
                   .layerCount = 1}
     };
 
-    try {
-        m_imageView = device.createImageViewUnique(imageViewCreateInfo);
-    } catch (...) {
-        vmaDestroyImage(m_allocator, m_image, m_allocation);
-        throw;
-    }
+    m_imageView = device.createImageViewUnique(imageViewCreateInfo);
 }
-
-Allocated2DImage::Allocated2DImage(Allocated2DImage&& rhs) noexcept
-    : m_allocator(std::exchange(rhs.m_allocator, nullptr))
-    , m_allocation(rhs.m_allocation)
-    , m_image(rhs.m_image)
-    , m_imageView(std::exchange(rhs.m_imageView, {}))
-{}
-
-Allocated2DImage& Allocated2DImage::operator=(Allocated2DImage&& rhs) noexcept
-{
-    if (this != &rhs) {
-        std::swap(m_allocator, rhs.m_allocator);
-        std::swap(m_allocation, rhs.m_allocation);
-        std::swap(m_image, rhs.m_image);
-        std::swap(m_imageView, rhs.m_imageView);
-    }
-    return *this;
-}
-
-Allocated2DImage::~Allocated2DImage() noexcept
-{
-    if (m_allocator) {
-        vmaDestroyImage(m_allocator, m_image, m_allocation);
-    }
-}
-// End Allocated2DImage
+// End AllocatedTexture
 
 }   // namespace renderer

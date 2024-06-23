@@ -49,7 +49,7 @@ private:
                                vk::Format format,
                                vk::ImageLayout oldLayout,
                                vk::ImageLayout newLayout);
-    Allocated2DImage createTextureImage(const std::filesystem::path& path);
+    AllocatedTexture createTextureImage(const std::filesystem::path& path);
     void updateUbo(vk::CommandBuffer command, vk::Buffer ubo, const vk::Extent2D& swapchainExtent);
 
     void uploadMesh();
@@ -70,7 +70,7 @@ private:
     vk::UniquePipeline m_graphicsPipeline;
 
     Mesh m_testMesh;
-    Allocated2DImage m_testTexture;
+    AllocatedTexture m_testTexture;
 };
 
 }   // namespace renderer
