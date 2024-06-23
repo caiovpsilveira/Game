@@ -98,6 +98,9 @@ public:
 
     ~Allocated2DImage() noexcept;
 
+public:
+    vk::Image image() const noexcept { return m_image; }
+
 private:
     VmaAllocator m_allocator = nullptr;   // not owned
     vk::Image m_image;

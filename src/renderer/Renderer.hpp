@@ -4,6 +4,9 @@
 #include "Types.hpp"
 #include "VulkanGraphicsContext.hpp"
 
+// std
+#include <filesystem>
+
 struct SDL_Window;
 
 namespace renderer
@@ -39,6 +42,12 @@ private:
     void endSingleTimeTransferCommand(vk::UniqueCommandBuffer&& commandBuffer);
 
     void uploadMesh();
+    void transitionImageLayout(vk::CommandBuffer commandBuffer,
+                               vk::Image image,
+                               vk::Format format,
+                               vk::ImageLayout oldLayout,
+                               vk::ImageLayout newLayout);
+    Allocated2DImage createTextureImage(const std::filesystem::path& path);
     void updateUbo(vk::CommandBuffer command, vk::Buffer ubo, const vk::Extent2D& swapchainExtent);
 
 private:

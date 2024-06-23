@@ -3,13 +3,13 @@
 #include "DescriptorSetLayoutBuilder.hpp"
 #include "GraphicsPipelineBuilder.hpp"
 #include "PipelineLayoutBuilder.hpp"
-#include "Utils.hpp"
 #include "core/Logger.hpp"
 
 // libs
 #include <SDL_vulkan.h>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
+#include <stb_image.h>
 
 // std
 #include <cstdint>
@@ -288,6 +288,143 @@ void Renderer::uploadMesh()
     DEBUG("Successfully uploaded mesh\n");
 }
 
+void Renderer::transitionImageLayout(vk::CommandBuffer commandBuffer,
+                                     vk::Image image,
+                                     vk::Format format,
+                                     vk::ImageLayout oldLayout,
+                                     vk::ImageLayout newLayout)
+{
+    (void) format;
+
+    vk::PipelineStageFlags2 sourceStage;
+    vk::AccessFlags2 sourceAccess;
+    vk::PipelineStageFlags2 destStage;
+    vk::AccessFlags2 destAccess;
+
+    if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal) {
+        sourceAccess = {};
+        destAccess = vk::AccessFlagBits2::eTransferWrite;
+        sourceStage = vk::PipelineStageFlagBits2::eTopOfPipe;
+        destStage = vk::PipelineStageFlagBits2::eTransfer;
+    } else if (oldLayout == vk::ImageLayout::eTransferDstOptimal &&
+               newLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
+        sourceAccess = vk::AccessFlagBits2::eTransferWrite;
+        destAccess = vk::AccessFlagBits2::eShaderRead;
+        sourceStage = vk::PipelineStageFlagBits2::eTransfer;
+        destStage = vk::PipelineStageFlagBits2::eFragmentShader;
+    } else if ((oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eColorAttachmentOptimal) ||
+               (oldLayout == vk::ImageLayout::eColorAttachmentOptimal &&
+                newLayout == vk::ImageLayout::ePresentSrcKHR)) {
+        // TODO: review
+        sourceAccess = vk::AccessFlagBits2::eMemoryWrite;
+        destAccess = vk::AccessFlagBits2::eMemoryWrite | vk::AccessFlagBits2::eMemoryRead;
+        sourceStage = vk::PipelineStageFlagBits2::eAllCommands;
+        destStage = vk::PipelineStageFlagBits2::eAllCommands;
+    } else {
+        assert(0);
+    }
+
+    vk::ImageMemoryBarrier2 imageBarrier {
+        .sType = vk::StructureType::eImageMemoryBarrier2,
+        .pNext = nullptr,
+        .srcStageMask = sourceStage,
+        .srcAccessMask = sourceAccess,
+        .dstStageMask = destStage,
+        .dstAccessMask = destAccess,
+        .oldLayout = oldLayout,
+        .newLayout = newLayout,
+        .srcQueueFamilyIndex = vk::QueueFamilyIgnored,
+        .dstQueueFamilyIndex = vk::QueueFamilyIgnored,
+        .image = image,
+        .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                             .baseMipLevel = 0,
+                             .levelCount = 1,
+                             .baseArrayLayer = 0,
+                             .layerCount = 1}
+    };
+
+    vk::DependencyInfo dependencyInfo {.sType = vk::StructureType::eDependencyInfo,
+                                       .pNext = nullptr,
+                                       .dependencyFlags = {},
+                                       .memoryBarrierCount = 0,
+                                       .pMemoryBarriers = nullptr,
+                                       .bufferMemoryBarrierCount = 0,
+                                       .pBufferMemoryBarriers = nullptr,
+                                       .imageMemoryBarrierCount = 1,
+                                       .pImageMemoryBarriers = &imageBarrier};
+
+    commandBuffer.pipelineBarrier2(dependencyInfo);
+}
+
+Allocated2DImage Renderer::createTextureImage(const std::filesystem::path& path)
+{
+    int texWidth, texHeight, texChannels;
+    using unique_stbi_uc_t = std::unique_ptr<stbi_uc, decltype(&stbi_image_free)>;
+    unique_stbi_uc_t pixels(stbi_load(path.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha),
+                            &stbi_image_free);
+
+    if (!pixels) {
+        throw std::ios_base::failure(std::string("Could not open file " + path.string()));
+    }
+
+    const auto& allocator = m_vkContext.allocator();
+    vk::DeviceSize imageSize = texWidth * texHeight * 4;
+    AllocatedBuffer stagingBuffer(allocator,
+                                  imageSize,
+                                  vk::BufferUsageFlagBits::eTransferSrc,
+                                  VMA_ALLOCATION_CREATE_MAPPED_BIT |
+                                      VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+                                  VMA_MEMORY_USAGE_AUTO);
+
+    VmaAllocationInfo stagingAllocationInfo = stagingBuffer.allocationInfo();
+    auto& data = stagingAllocationInfo.pMappedData;
+    std::memcpy(data, pixels.get(), static_cast<size_t>(imageSize));
+
+    Allocated2DImage image(allocator,
+                           vk::Format::eR8G8B8A8Srgb,
+                           {.width = static_cast<uint32_t>(texWidth), .height = static_cast<uint32_t>(texHeight)},
+                           vk::ImageTiling::eOptimal,
+                           vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
+                           0,
+                           VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE);
+
+    auto commandBuffer = beginSingleTimeTransferCommand();
+
+    transitionImageLayout(*commandBuffer,
+                          image.image(),
+                          vk::Format::eUndefined,
+                          vk::ImageLayout::eUndefined,
+                          vk::ImageLayout::eTransferDstOptimal);
+
+    vk::BufferImageCopy region {
+        .bufferOffset = 0,
+        .bufferRowLength = 0,
+        .bufferImageHeight = 0,
+        .imageSubresource = {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                             .mipLevel = 0,
+                             .baseArrayLayer = 0,
+                             .layerCount = 1},
+        .imageOffset = {.x = 0, .y = 0, .z = 0},
+        .imageExtent = {.width = static_cast<uint32_t>(texWidth),
+                             .height = static_cast<uint32_t>(texHeight),
+                             .depth = 1}
+    };
+    commandBuffer->copyBufferToImage(stagingBuffer.buffer(),
+                                     image.image(),
+                                     vk::ImageLayout::eTransferDstOptimal,
+                                     region);
+
+    transitionImageLayout(*commandBuffer,
+                          image.image(),
+                          vk::Format::eUndefined,
+                          vk::ImageLayout::eTransferDstOptimal,
+                          vk::ImageLayout::eShaderReadOnlyOptimal);
+
+    endSingleTimeTransferCommand(std::move(commandBuffer));
+
+    return image;
+}
+
 void Renderer::updateUbo(vk::CommandBuffer command, vk::Buffer ubo, const vk::Extent2D& swapchainExtent)
 {
     static auto startTime = std::chrono::high_resolution_clock::now();
@@ -339,10 +476,11 @@ void Renderer::drawFrame()
 
     updateUbo(commandBuffer, frameData.ubo.buffer(), swapchainExtent);
 
-    utils::transitionImage(commandBuffer,
-                           m_vkContext.swapchainImage(imgRes.value),
-                           vk::ImageLayout::eUndefined,
-                           vk::ImageLayout::eColorAttachmentOptimal);
+    transitionImageLayout(commandBuffer,
+                          m_vkContext.swapchainImage(imgRes.value),
+                          vk::Format::eUndefined,
+                          vk::ImageLayout::eUndefined,
+                          vk::ImageLayout::eColorAttachmentOptimal);
 
     vk::RenderingAttachmentInfo colorAttachment {.sType = vk::StructureType::eRenderingAttachmentInfo,
                                                  .pNext = nullptr,
@@ -399,10 +537,11 @@ void Renderer::drawFrame()
 
     commandBuffer.endRendering();
 
-    utils::transitionImage(commandBuffer,
-                           m_vkContext.swapchainImage(imgRes.value),
-                           vk::ImageLayout::eColorAttachmentOptimal,
-                           vk::ImageLayout::ePresentSrcKHR);
+    transitionImageLayout(commandBuffer,
+                          m_vkContext.swapchainImage(imgRes.value),
+                          vk::Format::eUndefined,
+                          vk::ImageLayout::eColorAttachmentOptimal,
+                          vk::ImageLayout::ePresentSrcKHR);
 
     commandBuffer.end();
 

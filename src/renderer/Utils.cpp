@@ -51,43 +51,4 @@ vk::UniqueShaderModule createUniqueShaderModule(vk::Device device, std::span<con
     return device.createShaderModuleUnique(createInfo);
 }
 
-void transitionImage(vk::CommandBuffer cmd,
-                     vk::Image image,
-                     vk::ImageLayout currentLayout,
-                     vk::ImageLayout newLayout) noexcept
-{
-    vk::ImageMemoryBarrier2 imageBarrier {
-        .sType = vk::StructureType::eImageMemoryBarrier2,
-        .pNext = nullptr,
-        .srcStageMask = vk::PipelineStageFlagBits2::eAllCommands,
-        .srcAccessMask = vk::AccessFlagBits2::eMemoryWrite,
-        .dstStageMask = vk::PipelineStageFlagBits2::eAllCommands,
-        .dstAccessMask = vk::AccessFlagBits2::eMemoryWrite | vk::AccessFlagBits2::eMemoryRead,
-        .oldLayout = currentLayout,
-        .newLayout = newLayout,
-        .srcQueueFamilyIndex = 0,
-        .dstQueueFamilyIndex = 0,
-        .image = image,
-        .subresourceRange = {.aspectMask = newLayout == vk::ImageLayout::eDepthAttachmentOptimal
-                                               ? vk::ImageAspectFlagBits::eDepth
-                                               : vk::ImageAspectFlagBits::eColor,
-                             .baseMipLevel = 0,
-                             .levelCount = 1,
-                             .baseArrayLayer = 0,
-                             .layerCount = 1}
-    };
-
-    vk::DependencyInfo dependencyInfo {.sType = vk::StructureType::eDependencyInfo,
-                                       .pNext = nullptr,
-                                       .dependencyFlags = {},
-                                       .memoryBarrierCount = 0,
-                                       .pMemoryBarriers = nullptr,
-                                       .bufferMemoryBarrierCount = 0,
-                                       .pBufferMemoryBarriers = nullptr,
-                                       .imageMemoryBarrierCount = 1,
-                                       .pImageMemoryBarriers = &imageBarrier};
-
-    cmd.pipelineBarrier2(dependencyInfo);
-}
-
 }   // namespace renderer::utils
