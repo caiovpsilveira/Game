@@ -370,7 +370,9 @@ Allocated2DImage Renderer::createTextureImage(const std::filesystem::path& path)
     }
 
     const auto& allocator = m_vkContext.allocator();
-    vk::DeviceSize imageSize = texWidth * texHeight * 4;
+    assert(texWidth >= 0);
+    assert(texHeight >= 0);
+    vk::DeviceSize imageSize = static_cast<vk::DeviceSize>(texWidth * texHeight * 4);
     AllocatedBuffer stagingBuffer(allocator,
                                   imageSize,
                                   vk::BufferUsageFlagBits::eTransferSrc,
@@ -437,8 +439,10 @@ void Renderer::updateUbo(vk::CommandBuffer command, vk::Buffer ubo, const vk::Ex
     UniformBufferObject uboData {};
     uboData.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     uboData.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    uboData.proj =
-        glm::perspective(glm::radians(45.0f), swapchainExtent.width / (float) swapchainExtent.height, 0.1f, 10.0f);
+    uboData.proj = glm::perspective(glm::radians(45.0f),
+                                    swapchainExtent.width / static_cast<float>(swapchainExtent.height),
+                                    0.1f,
+                                    10.0f);
     uboData.proj[1][1] *= -1;
 
     command.updateBuffer(ubo, 0, sizeof(uboData), &uboData);

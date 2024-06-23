@@ -30,8 +30,8 @@ std::vector<char> readFile(const std::filesystem::path& path)
     file.exceptions(std::ifstream::badbit | std::ifstream::failbit);
     file.open(path, std::ios::ate | std::ios::binary);
 
-    size_t fileSize = static_cast<size_t>(file.tellg());
-    std::vector<char> buffer(fileSize);
+    std::streampos fileSize = file.tellg();
+    std::vector<char> buffer(static_cast<size_t>(fileSize));
 
     file.seekg(0);
     file.read(buffer.data(), fileSize);
