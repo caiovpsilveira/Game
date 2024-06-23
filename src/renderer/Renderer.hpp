@@ -35,11 +35,11 @@ private:
 
     void createTextureSampler();
 
-    void createUboDescriptorPool();
+    void createGlobalDescriptorPool();
     void allocateFrameUboBuffers();
-    vk::UniqueDescriptorSetLayout createUbosDescriptorSets();
+    vk::UniqueDescriptorSetLayout createGlobalDescriptorSets();
 
-    void createGraphicsPipeline(vk::UniqueDescriptorSetLayout&& uboSetLayout);
+    void createGraphicsPipeline(vk::UniqueDescriptorSetLayout&& globalSetLayout);
 
     vk::UniqueCommandBuffer beginSingleTimeTransferCommand();
     void endSingleTimeTransferCommand(vk::UniqueCommandBuffer&& commandBuffer);
@@ -65,7 +65,7 @@ private:
 
     vk::UniqueSampler m_textureSampler;
 
-    vk::UniqueDescriptorPool m_uboDescriptorPool;
+    vk::UniqueDescriptorPool m_globalDescriptorPool;
     vk::UniquePipelineLayout m_graphicsPipelineLayout;
     vk::UniquePipeline m_graphicsPipeline;
 

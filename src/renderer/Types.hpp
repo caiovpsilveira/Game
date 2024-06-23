@@ -130,7 +130,7 @@ struct FrameCommandData {
 struct FrameData {
     FrameCommandData commandData;
     AllocatedBuffer ubo;
-    vk::DescriptorSet uboDescriptorSet;   // owned by the pool
+    vk::DescriptorSet globalDescriptorSet;   // owned by the pool
 };
 
 }   // namespace renderer

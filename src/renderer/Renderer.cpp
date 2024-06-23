@@ -63,11 +63,11 @@ Renderer::Renderer(SDL_Window* window)
 
     createTextureSampler();
 
-    createUboDescriptorPool();
+    createGlobalDescriptorPool();
     allocateFrameUboBuffers();
-    vk::UniqueDescriptorSetLayout uboSetLayout = createUbosDescriptorSets();
+    vk::UniqueDescriptorSetLayout globalDescriptorSetLayout = createGlobalDescriptorSets();
 
-    createGraphicsPipeline(std::move(uboSetLayout));
+    createGraphicsPipeline(std::move(globalDescriptorSetLayout));
 
     uploadMesh();
     uploadTexture();
@@ -148,19 +148,20 @@ void Renderer::createTextureSampler()
     DEBUG("Successfully created texture sampler\n");
 }
 
-void Renderer::createUboDescriptorPool()
+void Renderer::createGlobalDescriptorPool()
 {
-    vk::DescriptorPoolSize poolSize {.type = vk::DescriptorType::eUniformBuffer,
-                                     .descriptorCount = MAX_FRAMES_IN_FLIGHT};
+    vk::DescriptorPoolSize poolSizes[] {
+        {.type = vk::DescriptorType::eUniformBuffer, .descriptorCount = MAX_FRAMES_IN_FLIGHT}
+    };
 
     vk::DescriptorPoolCreateInfo poolCreateInfo {.sType = vk::StructureType::eDescriptorPoolCreateInfo,
                                                  .pNext = nullptr,
                                                  .flags = {},
                                                  .maxSets = MAX_FRAMES_IN_FLIGHT,
-                                                 .poolSizeCount = 1,
-                                                 .pPoolSizes = &poolSize};
+                                                 .poolSizeCount = std::size(poolSizes),
+                                                 .pPoolSizes = poolSizes};
 
-    m_uboDescriptorPool = m_vkContext.device().createDescriptorPoolUnique(poolCreateInfo);
+    m_globalDescriptorPool = m_vkContext.device().createDescriptorPoolUnique(poolCreateInfo);
     DEBUG("Successfully created UBO descriptor pool\n");
 }
 
@@ -177,19 +178,19 @@ void Renderer::allocateFrameUboBuffers()
     DEBUG("Successfully allocated frame UBOs buffers\n");
 }
 
-vk::UniqueDescriptorSetLayout Renderer::createUbosDescriptorSets()
+vk::UniqueDescriptorSetLayout Renderer::createGlobalDescriptorSets()
 {
     const auto& device = m_vkContext.device();
     DescriptorSetLayoutBuilder descriptorSetLayoutBuilder(device);
     descriptorSetLayoutBuilder.addBinding(vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex);
-    vk::UniqueDescriptorSetLayout uboSetLayout = descriptorSetLayoutBuilder.build();
+    vk::UniqueDescriptorSetLayout globalSetLayout = descriptorSetLayoutBuilder.build();
 
     vk::DescriptorSetLayout descriptorSetLayouts[MAX_FRAMES_IN_FLIGHT];
-    std::ranges::fill(descriptorSetLayouts, *uboSetLayout);
+    std::ranges::fill(descriptorSetLayouts, *globalSetLayout);
 
     vk::DescriptorSetAllocateInfo allocateInfo {.sType = vk::StructureType::eDescriptorSetAllocateInfo,
                                                 .pNext = nullptr,
-                                                .descriptorPool = *m_uboDescriptorPool,
+                                                .descriptorPool = *m_globalDescriptorPool,
                                                 .descriptorSetCount = std::size(descriptorSetLayouts),
                                                 .pSetLayouts = descriptorSetLayouts};
 
@@ -199,37 +200,39 @@ vk::UniqueDescriptorSetLayout Renderer::createUbosDescriptorSets()
         assert(descriptorSetsVec.size() == MAX_FRAMES_IN_FLIGHT);
         for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
             // move to stack instead of keeping dynamic allocation
-            m_frameData[i].uboDescriptorSet = descriptorSetsVec[i];
+            m_frameData[i].globalDescriptorSet = descriptorSetsVec[i];
         }
     }
 
     // Update descriptor sets
-    vk::DescriptorBufferInfo bufferInfo {.buffer = nullptr, .offset = 0, .range = sizeof(UniformBufferObject)};
-    vk::WriteDescriptorSet descriptorWrite {.sType = vk::StructureType::eWriteDescriptorSet,
-                                            .pNext = nullptr,
-                                            .dstSet = nullptr,
-                                            .dstBinding = 0,
-                                            .dstArrayElement = 0,
-                                            .descriptorCount = 1,
-                                            .descriptorType = vk::DescriptorType::eUniformBuffer,
-                                            .pImageInfo = nullptr,
-                                            .pBufferInfo = &bufferInfo,
-                                            .pTexelBufferView = nullptr};
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
         auto& frameData = m_frameData[i];
-        bufferInfo.buffer = frameData.ubo.buffer();
-        descriptorWrite.dstSet = frameData.uboDescriptorSet;
+        vk::DescriptorBufferInfo bufferInfo {.buffer = frameData.ubo.buffer(),
+                                             .offset = 0,
+                                             .range = sizeof(UniformBufferObject)};
+
+        vk::WriteDescriptorSet descriptorWrite {.sType = vk::StructureType::eWriteDescriptorSet,
+                                                .pNext = nullptr,
+                                                .dstSet = frameData.globalDescriptorSet,
+                                                .dstBinding = 0,
+                                                .dstArrayElement = 0,
+                                                .descriptorCount = 1,
+                                                .descriptorType = vk::DescriptorType::eUniformBuffer,
+                                                .pImageInfo = nullptr,
+                                                .pBufferInfo = &bufferInfo,
+                                                .pTexelBufferView = nullptr};
+
         device.updateDescriptorSets(descriptorWrite, nullptr);
     }
     DEBUG("Successfully created UBO descriptor sets\n");
-    return uboSetLayout;
+    return globalSetLayout;
 }
 
-void Renderer::createGraphicsPipeline(vk::UniqueDescriptorSetLayout&& uboSetLayout)
+void Renderer::createGraphicsPipeline(vk::UniqueDescriptorSetLayout&& globalSetLayout)
 {
     const auto& device = m_vkContext.device();
     PipelineLayoutBuilder pipelineLayoutBuilder(device);
-    pipelineLayoutBuilder.addDescriptorSetLayout(std::move(uboSetLayout));
+    pipelineLayoutBuilder.addDescriptorSetLayout(std::move(globalSetLayout));
     m_graphicsPipelineLayout = pipelineLayoutBuilder.build();
 
     GraphicsPipelineBuilder pipelineBuilder(m_vkContext);
@@ -574,7 +577,7 @@ void Renderer::drawFrame()
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
                                      *m_graphicsPipelineLayout,
                                      0,
-                                     frameData.uboDescriptorSet,
+                                     frameData.globalDescriptorSet,
                                      nullptr);
     commandBuffer.drawIndexed(m_testMesh.numIndices(), 1, 0, 0, 0);
 
