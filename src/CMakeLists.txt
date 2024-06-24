@@ -33,6 +33,7 @@ target_sources(game PRIVATE
                core/UniqueVmaAllocator.cpp
                #
                renderer/VulkanGraphicsContext.cpp
+               renderer/Image.cpp
                renderer/Types.cpp
                renderer/Utils.cpp
                renderer/DescriptorSetLayoutBuilder.cpp

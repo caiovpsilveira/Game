@@ -70,7 +70,10 @@ Renderer::Renderer(SDL_Window* window)
     createGraphicsPipeline(std::move(globalDescriptorSetLayout));
 
     m_testMesh = createMesh();
-    m_testTexture = createTextureImage("../res/images/texture.jpg");
+    Allocated2DImage image = loadImage("../res/images/texture.jpg");
+    m_testTexture = AllocatedTexture(m_vkContext.device(),
+                                     vk::Format::eR8G8B8A8Srgb,
+                                     std::make_shared<Allocated2DImage>(std::move(image)));
 }
 
 void Renderer::initTransferCommandData()
@@ -376,7 +379,7 @@ void Renderer::updateUbo(vk::CommandBuffer command, vk::Buffer ubo, const vk::Ex
     command.updateBuffer(ubo, 0, sizeof(uboData), &uboData);
 }
 
-AllocatedTexture Renderer::createTextureImage(const std::filesystem::path& path) const
+Allocated2DImage Renderer::loadImage(const std::filesystem::path& path) const
 {
     int texWidth, texHeight, texChannels;
     using unique_stbi_uc_t = std::unique_ptr<stbi_uc, decltype(&stbi_image_free)>;
@@ -402,19 +405,18 @@ AllocatedTexture Renderer::createTextureImage(const std::filesystem::path& path)
     auto& data = stagingAllocationInfo.pMappedData;
     std::memcpy(data, pixels.get(), static_cast<size_t>(imageSize));
 
-    AllocatedTexture texture(m_vkContext.device(),
-                             allocator,
-                             vk::Format::eR8G8B8A8Srgb,
-                             {.width = static_cast<uint32_t>(texWidth), .height = static_cast<uint32_t>(texHeight)},
-                             vk::ImageTiling::eOptimal,
-                             vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
-                             0,
-                             VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE);
+    Allocated2DImage image(allocator,
+                           vk::Format::eR8G8B8A8Srgb,
+                           {.width = static_cast<uint32_t>(texWidth), .height = static_cast<uint32_t>(texHeight)},
+                           vk::ImageTiling::eOptimal,
+                           vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
+                           0,
+                           VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE);
 
     auto commandBuffer = beginSingleTimeTransferCommand();
 
     transitionImageLayout(*commandBuffer,
-                          texture.image(),
+                          image.image(),
                           vk::Format::eUndefined,
                           vk::ImageLayout::eUndefined,
                           vk::ImageLayout::eTransferDstOptimal);
@@ -433,19 +435,19 @@ AllocatedTexture Renderer::createTextureImage(const std::filesystem::path& path)
                              .depth = 1}
     };
     commandBuffer->copyBufferToImage(stagingBuffer.buffer(),
-                                     texture.image(),
+                                     image.image(),
                                      vk::ImageLayout::eTransferDstOptimal,
                                      region);
 
     transitionImageLayout(*commandBuffer,
-                          texture.image(),
+                          image.image(),
                           vk::Format::eUndefined,
                           vk::ImageLayout::eTransferDstOptimal,
                           vk::ImageLayout::eShaderReadOnlyOptimal);
 
     endSingleTimeTransferCommand(std::move(commandBuffer));
 
-    return texture;
+    return image;
 }
 
 Mesh Renderer::createMesh() const

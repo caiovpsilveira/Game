@@ -1,6 +1,7 @@
 #ifndef RENDERER_RENDERER_HPP
 #define RENDERER_RENDERER_HPP
 
+#include "Image.hpp"
 #include "Types.hpp"
 #include "VulkanGraphicsContext.hpp"
 
@@ -54,7 +55,7 @@ private:
     void updateUbo(vk::CommandBuffer command, vk::Buffer ubo, const vk::Extent2D& swapchainExtent) const;
 
     // TODO: move to public and pass to drawFrame
-    AllocatedTexture createTextureImage(const std::filesystem::path& path) const;
+    Allocated2DImage loadImage(const std::filesystem::path& path) const;
     Mesh createMesh() const;
 
 private:
