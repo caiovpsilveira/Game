@@ -11,9 +11,9 @@ vk::VertexInputBindingDescription Vertex::bindingDescription() noexcept
                                               .inputRate = vk::VertexInputRate::eVertex};
 }
 
-std::array<vk::VertexInputAttributeDescription, 2> Vertex::attributeDescriptions() noexcept
+std::array<vk::VertexInputAttributeDescription, 3> Vertex::attributeDescriptions() noexcept
 {
-    std::array<vk::VertexInputAttributeDescription, 2> attributeDescriptions;
+    std::array<vk::VertexInputAttributeDescription, 3> attributeDescriptions;
     // pos
     attributeDescriptions[0] = {.location = 0,
                                 .binding = 0,
@@ -24,6 +24,12 @@ std::array<vk::VertexInputAttributeDescription, 2> Vertex::attributeDescriptions
                                 .binding = 0,
                                 .format = vk::Format::eR32G32B32Sfloat,
                                 .offset = offsetof(Vertex, color)};
+    // texture
+    attributeDescriptions[2] = {.location = 2,
+                                .binding = 0,
+                                .format = vk::Format::eR32G32Sfloat,
+                                .offset = offsetof(Vertex, texCoord)};
+
     return attributeDescriptions;
 }
 // End Vertex

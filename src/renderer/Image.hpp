@@ -44,7 +44,9 @@ class AllocatedTexture
 {
 public:
     AllocatedTexture() noexcept = default;
-    AllocatedTexture(vk::Device device, vk::Format format, std::shared_ptr<const Allocated2DImage> image);
+    AllocatedTexture(std::shared_ptr<const Allocated2DImage> image,
+                     vk::UniqueImageView imageView,
+                     vk::DescriptorSet descriptor);
 
     AllocatedTexture(const AllocatedTexture&) = delete;
     AllocatedTexture& operator=(const AllocatedTexture&) = delete;
@@ -56,10 +58,13 @@ public:
 
 public:
     vk::Image image() const noexcept { return m_image->image(); }
+    vk::ImageView imageView() const noexcept { return *m_imageView; }
+    vk::DescriptorSet descriptor() const noexcept { return m_descriptor; }
 
 private:
     std::shared_ptr<const Allocated2DImage> m_image;
     vk::UniqueImageView m_imageView;
+    vk::DescriptorSet m_descriptor;   // owned by the pool;
 };
 
 }   // namespace renderer

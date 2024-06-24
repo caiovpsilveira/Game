@@ -25,13 +25,13 @@ public:
     ~PipelineLayoutBuilder() noexcept = default;
 
 public:
-    void addDescriptorSetLayout(vk::UniqueDescriptorSetLayout&& descriptorSetLayout);
+    void setDescriptorSetLayouts(const std::vector<vk::DescriptorSetLayout>& descriptorSetLayouts);
 
     vk::UniquePipelineLayout build();
 
 private:
-    vk::Device m_device;   // not owned
-    std::vector<vk::UniqueDescriptorSetLayout> m_descriptorSetLayouts;
+    vk::Device m_device;                                           // not owned
+    std::vector<vk::DescriptorSetLayout> m_descriptorSetLayouts;   // not owned
 };
 
 }   // namespace renderer

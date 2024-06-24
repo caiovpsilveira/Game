@@ -21,10 +21,10 @@ namespace renderer
 
 // TODO: remove
 static const std::vector<Vertex> vertices = {
-    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-    { {0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-    {  {0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-    { {-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+    { {0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+    {  {0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+    { {-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
 };
 
 static const std::vector<uint32_t> indices = {0, 1, 2, 2, 3, 0};
@@ -61,19 +61,21 @@ Renderer::Renderer(SDL_Window* window)
     initTransferCommandData();
     initFrameCommandData();
 
-    createTextureSampler();
-
     createGlobalDescriptorPool();
     allocateFrameUboBuffers();
     vk::UniqueDescriptorSetLayout globalDescriptorSetLayout = createGlobalDescriptorSets();
 
-    createGraphicsPipeline(std::move(globalDescriptorSetLayout));
+    createTextureSampler();
+    createTextureDescriptorPool();
+    m_textureSetLayout = createTextureSetLayout();
+
+    std::vector<vk::DescriptorSetLayout> setLayouts = {*globalDescriptorSetLayout, *m_textureSetLayout};
+    createGraphicsPipeline(setLayouts);
 
     m_testMesh = createMesh();
-    Allocated2DImage image = loadImage("../res/images/texture.jpg");
-    m_testTexture = AllocatedTexture(m_vkContext.device(),
-                                     vk::Format::eR8G8B8A8Srgb,
-                                     std::make_shared<Allocated2DImage>(std::move(image)));
+    std::shared_ptr<const Allocated2DImage> image =
+        std::make_shared<const Allocated2DImage>(loadImage("../res/images/texture.jpg"));
+    m_testTexture = createTexture(std::move(image), vk::Format::eR8G8B8A8Srgb);
 }
 
 void Renderer::initTransferCommandData()
@@ -122,33 +124,6 @@ void Renderer::initFrameCommandData()
         commandData.renderFence = m_vkContext.device().createFenceUnique(fenceCreateInfo);
     }
     DEBUG("Successfully created frame command data\n");
-}
-
-void Renderer::createTextureSampler()
-{
-    auto properties = m_vkContext.physicalDevice().getProperties();
-
-    vk::SamplerCreateInfo samplerCreateInfo {.sType = vk::StructureType::eSamplerCreateInfo,
-                                             .pNext = nullptr,
-                                             .flags = {},
-                                             .magFilter = vk::Filter::eLinear,
-                                             .minFilter = vk::Filter::eLinear,
-                                             .mipmapMode = vk::SamplerMipmapMode::eLinear,
-                                             .addressModeU = vk::SamplerAddressMode::eRepeat,
-                                             .addressModeV = vk::SamplerAddressMode::eRepeat,
-                                             .addressModeW = vk::SamplerAddressMode::eRepeat,
-                                             .mipLodBias = 0.f,
-                                             .anisotropyEnable = vk::True,
-                                             .maxAnisotropy = properties.limits.maxSamplerAnisotropy,
-                                             .compareEnable = vk::False,
-                                             .compareOp = vk::CompareOp::eAlways,
-                                             .minLod = 0.f,
-                                             .maxLod = 0.f,
-                                             .borderColor = vk::BorderColor::eIntOpaqueBlack,
-                                             .unnormalizedCoordinates = vk::False};
-
-    m_textureSampler = m_vkContext.device().createSamplerUnique(samplerCreateInfo);
-    DEBUG("Successfully created texture sampler\n");
 }
 
 void Renderer::createGlobalDescriptorPool()
@@ -202,7 +177,6 @@ vk::UniqueDescriptorSetLayout Renderer::createGlobalDescriptorSets()
         auto descriptorSetsVec = device.allocateDescriptorSets(allocateInfo);
         assert(descriptorSetsVec.size() == MAX_FRAMES_IN_FLIGHT);
         for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-            // move to stack instead of keeping dynamic allocation
             m_frameData[i].globalDescriptorSet = descriptorSetsVec[i];
         }
     }
@@ -231,11 +205,66 @@ vk::UniqueDescriptorSetLayout Renderer::createGlobalDescriptorSets()
     return globalSetLayout;
 }
 
-void Renderer::createGraphicsPipeline(vk::UniqueDescriptorSetLayout&& globalSetLayout)
+void Renderer::createTextureSampler()
+{
+    auto properties = m_vkContext.physicalDevice().getProperties();
+
+    vk::SamplerCreateInfo samplerCreateInfo {.sType = vk::StructureType::eSamplerCreateInfo,
+                                             .pNext = nullptr,
+                                             .flags = {},
+                                             .magFilter = vk::Filter::eLinear,
+                                             .minFilter = vk::Filter::eLinear,
+                                             .mipmapMode = vk::SamplerMipmapMode::eLinear,
+                                             .addressModeU = vk::SamplerAddressMode::eRepeat,
+                                             .addressModeV = vk::SamplerAddressMode::eRepeat,
+                                             .addressModeW = vk::SamplerAddressMode::eRepeat,
+                                             .mipLodBias = 0.f,
+                                             .anisotropyEnable = vk::True,
+                                             .maxAnisotropy = properties.limits.maxSamplerAnisotropy,
+                                             .compareEnable = vk::False,
+                                             .compareOp = vk::CompareOp::eAlways,
+                                             .minLod = 0.f,
+                                             .maxLod = 0.f,
+                                             .borderColor = vk::BorderColor::eIntOpaqueBlack,
+                                             .unnormalizedCoordinates = vk::False};
+
+    m_textureSampler = m_vkContext.device().createSamplerUnique(samplerCreateInfo);
+    DEBUG("Successfully created texture sampler\n");
+}
+
+void Renderer::createTextureDescriptorPool()
+{
+    // TODO: make a growable pool, no way of knowing ahead the amount of texture descriptors needed
+    vk::DescriptorPoolSize poolSizes[] {
+        {.type = vk::DescriptorType::eCombinedImageSampler, .descriptorCount = 1}
+    };
+
+    vk::DescriptorPoolCreateInfo poolCreateInfo {.sType = vk::StructureType::eDescriptorPoolCreateInfo,
+                                                 .pNext = nullptr,
+                                                 .flags = {},
+                                                 .maxSets = MAX_FRAMES_IN_FLIGHT,
+                                                 .poolSizeCount = std::size(poolSizes),
+                                                 .pPoolSizes = poolSizes};
+
+    m_textureDescriptorPool = m_vkContext.device().createDescriptorPoolUnique(poolCreateInfo);
+    DEBUG("Successfully created texture descriptor pool\n");
+}
+
+vk::UniqueDescriptorSetLayout Renderer::createTextureSetLayout()
+{
+    const auto& device = m_vkContext.device();
+    DescriptorSetLayoutBuilder descriptorSetLayoutBuilder(device);
+    descriptorSetLayoutBuilder.addBinding(vk::DescriptorType::eCombinedImageSampler,
+                                          1,
+                                          vk::ShaderStageFlagBits::eFragment);
+    return descriptorSetLayoutBuilder.build();
+}
+
+void Renderer::createGraphicsPipeline(const std::vector<vk::DescriptorSetLayout>& setLayouts)
 {
     const auto& device = m_vkContext.device();
     PipelineLayoutBuilder pipelineLayoutBuilder(device);
-    pipelineLayoutBuilder.addDescriptorSetLayout(std::move(globalSetLayout));
+    pipelineLayoutBuilder.setDescriptorSetLayouts(setLayouts);
     m_graphicsPipelineLayout = pipelineLayoutBuilder.build();
 
     GraphicsPipelineBuilder pipelineBuilder(m_vkContext);
@@ -450,6 +479,61 @@ Allocated2DImage Renderer::loadImage(const std::filesystem::path& path) const
     return image;
 }
 
+AllocatedTexture Renderer::createTexture(std::shared_ptr<const Allocated2DImage> image, vk::Format format) const
+{
+    vk::ImageViewCreateInfo imageViewCreateInfo {
+        .sType = vk::StructureType::eImageViewCreateInfo,
+        .pNext = nullptr,
+        .flags = {},
+        .image = image->image(),
+        .viewType = vk::ImageViewType::e2D,
+        .format = format,
+        .components = {vk::ComponentSwizzle::eIdentity,
+                  vk::ComponentSwizzle::eIdentity,
+                  vk::ComponentSwizzle::eIdentity,
+                  vk::ComponentSwizzle::eIdentity},
+        .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                  .baseMipLevel = 0,
+                  .levelCount = 1,
+                  .baseArrayLayer = 0,
+                  .layerCount = 1}
+    };
+
+    const auto& device = m_vkContext.device();
+    auto imageView = device.createImageViewUnique(imageViewCreateInfo);
+
+    // Allocate descriptor
+    vk::DescriptorSetAllocateInfo allocateInfo {.sType = vk::StructureType::eDescriptorSetAllocateInfo,
+                                                .pNext = nullptr,
+                                                .descriptorPool = *m_textureDescriptorPool,
+                                                .descriptorSetCount = 1,
+                                                .pSetLayouts = &*m_textureSetLayout};
+
+    auto descriptorSetsVec = device.allocateDescriptorSets(allocateInfo);
+    assert(descriptorSetsVec.size() == 1);
+    auto& textureSet = descriptorSetsVec[0];
+
+    // Write descriptor
+    vk::DescriptorImageInfo imageInfo {.sampler = *m_textureSampler,
+                                       .imageView = *imageView,
+                                       .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal};
+
+    vk::WriteDescriptorSet descriptorWrite {.sType = vk::StructureType::eWriteDescriptorSet,
+                                            .pNext = nullptr,
+                                            .dstSet = textureSet,
+                                            .dstBinding = 0,
+                                            .dstArrayElement = 0,
+                                            .descriptorCount = 1,
+                                            .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+                                            .pImageInfo = &imageInfo,
+                                            .pBufferInfo = nullptr,
+                                            .pTexelBufferView = nullptr};
+
+    device.updateDescriptorSets(descriptorWrite, nullptr);
+
+    return AllocatedTexture(std::move(image), std::move(imageView), textureSet);
+}
+
 Mesh Renderer::createMesh() const
 {
     const auto& device = m_vkContext.device();
@@ -572,13 +656,10 @@ void Renderer::drawFrame()
     commandBuffer.setScissor(0, scissor);
 
     // draw
+    vk::DescriptorSet sets[] = {frameData.globalDescriptorSet, m_testTexture.descriptor()};
     commandBuffer.bindVertexBuffers(0, m_testMesh.vertexBuffer(), {0});
     commandBuffer.bindIndexBuffer(m_testMesh.indexBuffer(), 0, vk::IndexType::eUint32);
-    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-                                     *m_graphicsPipelineLayout,
-                                     0,
-                                     frameData.globalDescriptorSet,
-                                     nullptr);
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *m_graphicsPipelineLayout, 0, sets, nullptr);
     commandBuffer.drawIndexed(m_testMesh.numIndices(), 1, 0, 0, 0);
 
     commandBuffer.endRendering();

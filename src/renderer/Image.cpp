@@ -75,30 +75,13 @@ Allocated2DImage::~Allocated2DImage() noexcept
 // End Allocated2DImage
 
 // Begin AllocatedTexture
-AllocatedTexture::AllocatedTexture(vk::Device device, vk::Format format, std::shared_ptr<const Allocated2DImage> image)
-{
-    m_image = std::move(image);
-
-    vk::ImageViewCreateInfo imageViewCreateInfo {
-        .sType = vk::StructureType::eImageViewCreateInfo,
-        .pNext = nullptr,
-        .flags = {},
-        .image = m_image->image(),
-        .viewType = vk::ImageViewType::e2D,
-        .format = format,
-        .components = {vk::ComponentSwizzle::eIdentity,
-                  vk::ComponentSwizzle::eIdentity,
-                  vk::ComponentSwizzle::eIdentity,
-                  vk::ComponentSwizzle::eIdentity},
-        .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
-                  .baseMipLevel = 0,
-                  .levelCount = 1,
-                  .baseArrayLayer = 0,
-                  .layerCount = 1}
-    };
-
-    m_imageView = device.createImageViewUnique(imageViewCreateInfo);
-}
+AllocatedTexture::AllocatedTexture(std::shared_ptr<const Allocated2DImage> image,
+                                   vk::UniqueImageView imageView,
+                                   vk::DescriptorSet descriptor)
+    : m_image(std::move(image))
+    , m_imageView(std::move(imageView))
+    , m_descriptor(descriptor)
+{}
 // End AllocatedTexture
 
 }   // namespace renderer

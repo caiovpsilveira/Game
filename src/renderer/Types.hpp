@@ -13,12 +13,13 @@
 namespace renderer
 {
 
-struct Vertex {
+struct alignas(16) Vertex {
     glm::vec2 pos;
     glm::vec3 color;
+    glm::vec2 texCoord;
 
     static vk::VertexInputBindingDescription bindingDescription() noexcept;
-    static std::array<vk::VertexInputAttributeDescription, 2> attributeDescriptions() noexcept;
+    static std::array<vk::VertexInputAttributeDescription, 3> attributeDescriptions() noexcept;
 };
 
 class AllocatedBuffer

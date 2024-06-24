@@ -34,13 +34,15 @@ private:
     void initTransferCommandData();
     void initFrameCommandData();
 
-    void createTextureSampler();
-
     void createGlobalDescriptorPool();
     void allocateFrameUboBuffers();
     vk::UniqueDescriptorSetLayout createGlobalDescriptorSets();
 
-    void createGraphicsPipeline(vk::UniqueDescriptorSetLayout&& globalSetLayout);
+    void createTextureSampler();
+    void createTextureDescriptorPool();
+    vk::UniqueDescriptorSetLayout createTextureSetLayout();
+
+    void createGraphicsPipeline(const std::vector<vk::DescriptorSetLayout>& descriptorSetLayouts);
 
     vk::UniqueCommandBuffer beginSingleTimeTransferCommand() const;
     void endSingleTimeTransferCommand(vk::UniqueCommandBuffer&& commandBuffer) const;
@@ -54,8 +56,9 @@ private:
     // TODO: move when being relative to a camera
     void updateUbo(vk::CommandBuffer command, vk::Buffer ubo, const vk::Extent2D& swapchainExtent) const;
 
-    // TODO: move to public and pass to drawFrame
+    // TODO: create a render object? Somehow pass these to draw frame to be called extenally
     Allocated2DImage loadImage(const std::filesystem::path& path) const;
+    AllocatedTexture createTexture(std::shared_ptr<const Allocated2DImage> image, vk::Format format) const;
     Mesh createMesh() const;
 
 private:
@@ -66,9 +69,12 @@ private:
     size_t m_frameCount = 0;
     FrameData m_frameData[MAX_FRAMES_IN_FLIGHT];
 
-    vk::UniqueSampler m_textureSampler;
-
     vk::UniqueDescriptorPool m_globalDescriptorPool;
+
+    vk::UniqueSampler m_textureSampler;
+    vk::UniqueDescriptorPool m_textureDescriptorPool;
+    vk::UniqueDescriptorSetLayout m_textureSetLayout;
+
     vk::UniquePipelineLayout m_graphicsPipelineLayout;
     vk::UniquePipeline m_graphicsPipeline;
 
