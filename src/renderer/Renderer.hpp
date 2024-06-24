@@ -41,19 +41,21 @@ private:
 
     void createGraphicsPipeline(vk::UniqueDescriptorSetLayout&& globalSetLayout);
 
-    vk::UniqueCommandBuffer beginSingleTimeTransferCommand();
-    void endSingleTimeTransferCommand(vk::UniqueCommandBuffer&& commandBuffer);
+    vk::UniqueCommandBuffer beginSingleTimeTransferCommand() const;
+    void endSingleTimeTransferCommand(vk::UniqueCommandBuffer&& commandBuffer) const;
 
-    void transitionImageLayout(vk::CommandBuffer commandBuffer,
-                               vk::Image image,
-                               vk::Format format,
-                               vk::ImageLayout oldLayout,
-                               vk::ImageLayout newLayout);
-    AllocatedTexture createTextureImage(const std::filesystem::path& path);
-    void updateUbo(vk::CommandBuffer command, vk::Buffer ubo, const vk::Extent2D& swapchainExtent);
+    static void transitionImageLayout(vk::CommandBuffer commandBuffer,
+                                      vk::Image image,
+                                      vk::Format format,
+                                      vk::ImageLayout oldLayout,
+                                      vk::ImageLayout newLayout);
 
-    void uploadMesh();
-    void uploadTexture();
+    // TODO: move when being relative to a camera
+    void updateUbo(vk::CommandBuffer command, vk::Buffer ubo, const vk::Extent2D& swapchainExtent) const;
+
+    // TODO: move to public and pass to drawFrame
+    AllocatedTexture createTextureImage(const std::filesystem::path& path) const;
+    Mesh createMesh() const;
 
 private:
     static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
@@ -69,6 +71,7 @@ private:
     vk::UniquePipelineLayout m_graphicsPipelineLayout;
     vk::UniquePipeline m_graphicsPipeline;
 
+    // TODO: remove
     Mesh m_testMesh;
     AllocatedTexture m_testTexture;
 };

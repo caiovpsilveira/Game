@@ -69,8 +69,8 @@ Renderer::Renderer(SDL_Window* window)
 
     createGraphicsPipeline(std::move(globalDescriptorSetLayout));
 
-    uploadMesh();
-    uploadTexture();
+    m_testMesh = createMesh();
+    m_testTexture = createTextureImage("../res/images/texture.jpg");
 }
 
 void Renderer::initTransferCommandData()
@@ -242,7 +242,7 @@ void Renderer::createGraphicsPipeline(vk::UniqueDescriptorSetLayout&& globalSetL
     DEBUG("Successfully created graphics pipeline\n");
 }
 
-vk::UniqueCommandBuffer Renderer::beginSingleTimeTransferCommand()
+vk::UniqueCommandBuffer Renderer::beginSingleTimeTransferCommand() const
 {
     vk::CommandBufferAllocateInfo commandBufferAllocateInfo {.sType = vk::StructureType::eCommandBufferAllocateInfo,
                                                              .pNext = nullptr,
@@ -262,7 +262,7 @@ vk::UniqueCommandBuffer Renderer::beginSingleTimeTransferCommand()
     return commandBuffer;
 }
 
-void Renderer::endSingleTimeTransferCommand(vk::UniqueCommandBuffer&& commandBuffer)
+void Renderer::endSingleTimeTransferCommand(vk::UniqueCommandBuffer&& commandBuffer) const
 {
     commandBuffer->end();
 
@@ -358,7 +358,25 @@ void Renderer::transitionImageLayout(vk::CommandBuffer commandBuffer,
     commandBuffer.pipelineBarrier2(dependencyInfo);
 }
 
-AllocatedTexture Renderer::createTextureImage(const std::filesystem::path& path)
+void Renderer::updateUbo(vk::CommandBuffer command, vk::Buffer ubo, const vk::Extent2D& swapchainExtent) const
+{
+    static auto startTime = std::chrono::high_resolution_clock::now();
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+    UniformBufferObject uboData {};
+    uboData.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    uboData.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    uboData.proj = glm::perspective(glm::radians(45.0f),
+                                    swapchainExtent.width / static_cast<float>(swapchainExtent.height),
+                                    0.1f,
+                                    10.0f);
+    uboData.proj[1][1] *= -1;
+
+    command.updateBuffer(ubo, 0, sizeof(uboData), &uboData);
+}
+
+AllocatedTexture Renderer::createTextureImage(const std::filesystem::path& path) const
 {
     int texWidth, texHeight, texChannels;
     using unique_stbi_uc_t = std::unique_ptr<stbi_uc, decltype(&stbi_image_free)>;
@@ -430,25 +448,7 @@ AllocatedTexture Renderer::createTextureImage(const std::filesystem::path& path)
     return texture;
 }
 
-void Renderer::updateUbo(vk::CommandBuffer command, vk::Buffer ubo, const vk::Extent2D& swapchainExtent)
-{
-    static auto startTime = std::chrono::high_resolution_clock::now();
-    auto currentTime = std::chrono::high_resolution_clock::now();
-    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-    UniformBufferObject uboData {};
-    uboData.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    uboData.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    uboData.proj = glm::perspective(glm::radians(45.0f),
-                                    swapchainExtent.width / static_cast<float>(swapchainExtent.height),
-                                    0.1f,
-                                    10.0f);
-    uboData.proj[1][1] *= -1;
-
-    command.updateBuffer(ubo, 0, sizeof(uboData), &uboData);
-}
-
-void Renderer::uploadMesh()
+Mesh Renderer::createMesh() const
 {
     const auto& device = m_vkContext.device();
     const auto& allocator = m_vkContext.allocator();
@@ -456,7 +456,7 @@ void Renderer::uploadMesh()
     const vk::DeviceSize vertexBufferSize = vertices.size() * sizeof(vertices[0]);
     const vk::DeviceSize indexBufferSize = indices.size() * sizeof(indices[0]);
 
-    m_testMesh = Mesh(device, allocator, vertexBufferSize, indexBufferSize);
+    auto mesh = Mesh(device, allocator, vertexBufferSize, indexBufferSize);
 
     // create staging buffer, contiguous memory containing [vertexBufferData, indexBufferData]
     AllocatedBuffer stagingBuffer(allocator,
@@ -476,19 +476,13 @@ void Renderer::uploadMesh()
     auto commandBuffer = beginSingleTimeTransferCommand();
     // Record vkCmdCopyBuffer from staging buffer to device mesh vertex buffer and index buffer
     vk::BufferCopy vertexCopyRegion {.srcOffset = 0, .dstOffset = 0, .size = vertexBufferSize};
-    commandBuffer->copyBuffer(stagingBuffer.buffer(), m_testMesh.vertexBuffer(), vertexCopyRegion);
+    commandBuffer->copyBuffer(stagingBuffer.buffer(), mesh.vertexBuffer(), vertexCopyRegion);
 
     vk::BufferCopy indexCopyRegion {.srcOffset = vertexBufferSize, .dstOffset = 0, .size = indexBufferSize};
-    commandBuffer->copyBuffer(stagingBuffer.buffer(), m_testMesh.indexBuffer(), indexCopyRegion);
+    commandBuffer->copyBuffer(stagingBuffer.buffer(), mesh.indexBuffer(), indexCopyRegion);
 
     endSingleTimeTransferCommand(std::move(commandBuffer));
-    DEBUG("Successfully uploaded mesh\n");
-}
-
-void Renderer::uploadTexture()
-{
-    m_testTexture = createTextureImage("../res/images/texture.jpg");
-    DEBUG("Successfully uploaded texture\n");
+    return mesh;
 }
 
 void Renderer::drawFrame()
